@@ -682,7 +682,7 @@ public sealed class DetectionPipelineHostedService(
                 _detectionChannel.Writer,
                 new DetectionCandidate(item.SourcePath, item.Source, DateTime.UtcNow, PendingItemId: item.Id),
                 "pending_restore_drop",
-            cancellationToken);
+                cancellationToken);
         }
     }
 
