@@ -103,6 +103,9 @@ Output zip:
   - `remote-scripts/01-Enable-RemoteAccess.ps1`
   - `remote-scripts/02-Install-And-Validate-Remote.ps1`
   - `remote-scripts/03-Collect-RemoteSupport.ps1`
+  - `remote-scripts/01-Enable-RemoteAccess.cmd`
+  - `remote-scripts/02-Install-And-Validate-Remote.cmd`
+  - `remote-scripts/03-Collect-RemoteSupport.cmd`
   - `REMOTE_SETUP_QUICK_START.md`
 
 ## ProjectWise Command Connector Profile

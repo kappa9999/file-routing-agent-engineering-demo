@@ -18,22 +18,16 @@ powershell -ExecutionPolicy Bypass -File .\scripts\Build-DemoBundle.ps1
 ```
 
 ## Step 1 (Machine B, one-time): Enable remote access
-1. Copy the repo folder or just `scripts\remote\01-Enable-RemoteAccess.ps1` to Machine B.
-2. Right-click PowerShell and choose **Run as administrator**.
-3. Run:
-```powershell
-powershell -ExecutionPolicy Bypass -File .\01-Enable-RemoteAccess.ps1
-```
-4. Note the printed **Machine Name** (example: `ENG-LAPTOP-07`).
+1. Copy `remote-scripts` folder to Machine B.
+2. Right-click `01-Enable-RemoteAccess.cmd` and choose **Run as administrator**.
+3. Note the printed **Machine Name** (example: `ENG-LAPTOP-07`).
 
 ## Step 2 (Machine A): Remote install + validation
-1. In PowerShell on Machine A, go to repo root.
-2. Run:
-```powershell
-powershell -ExecutionPolicy Bypass -File .\scripts\remote\02-Install-And-Validate-Remote.ps1 -ComputerName ENG-LAPTOP-07 -AddTrustedHost
-```
-3. Enter credentials when prompted.
-4. Wait for `Remote install completed`.
+1. Open `remote-scripts` on Machine A.
+2. Double-click `02-Install-And-Validate-Remote.cmd`.
+3. Enter Machine B name/IP when prompted.
+4. Enter credentials when prompted.
+5. Wait for `Remote install completed`.
 
 ## Step 3 (Machine B): Run real workflow test
 1. Open `File Routing Agent` from desktop/start menu.
@@ -43,10 +37,8 @@ powershell -ExecutionPolicy Bypass -File .\scripts\remote\02-Install-And-Validat
 5. In tray menu, click **Export Support Bundle**.
 
 ## Step 4 (Machine A): Pull support/log package
-1. Run:
-```powershell
-powershell -ExecutionPolicy Bypass -File .\scripts\remote\03-Collect-RemoteSupport.ps1 -ComputerName ENG-LAPTOP-07 -AddTrustedHost
-```
+1. Double-click `03-Collect-RemoteSupport.cmd`.
+2. Enter Machine B name/IP when prompted.
 2. The zip is saved under:
 - `artifacts\remote-support\RemoteCapture_<MachineName>_<timestamp>.zip`
 
