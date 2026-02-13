@@ -49,6 +49,7 @@ public partial class App : System.Windows.Application
                 services.PostConfigure<AgentRuntimeOptions>(NormalizeRuntimeOptions);
 
                 services.AddSingleton<IUserPromptService, DesktopPromptService>();
+                services.AddSingleton<SupportBundleService>();
                 services.AddHostedService<TrayShellHostedService>();
                 services.AddFileRoutingInfrastructure();
             })

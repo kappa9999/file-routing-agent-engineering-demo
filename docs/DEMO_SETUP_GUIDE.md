@@ -37,6 +37,7 @@ powershell -ExecutionPolicy Bypass -File .\scripts\LocalSmokeTest.ps1
 6. Create naming conflict and show keep-both/overwrite/cancel handling.
 7. Open Diagnostics and show connector publish event row.
 8. Open pending detections and demonstrate retry + dismiss.
+9. Click `Export Support Bundle` and show generated zip on Desktop for support handoff.
 
 ## Talking Points For Engineering Leadership
 - No silent overwrite policy prevents accidental print-set loss.

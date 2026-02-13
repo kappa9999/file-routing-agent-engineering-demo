@@ -19,6 +19,7 @@ public sealed class TrayShellHostedService(
     IManualDetectionIngress manualDetectionIngress,
     IScanScheduler scanScheduler,
     IRootAvailabilityTracker rootAvailabilityTracker,
+    SupportBundleService supportBundleService,
     IOptions<AgentRuntimeOptions> runtimeOptions,
     ILogger<TrayShellHostedService> logger) : IHostedService
 {
@@ -87,6 +88,10 @@ public sealed class TrayShellHostedService(
             diagnosticsItem.Click += async (_, _) => await ShowDiagnosticsAsync();
             contextMenu.Items.Add(diagnosticsItem);
 
+            var exportSupportBundleItem = new Forms.ToolStripMenuItem("Export Support Bundle");
+            exportSupportBundleItem.Click += async (_, _) => await ExportSupportBundleAsync();
+            contextMenu.Items.Add(exportSupportBundleItem);
+
             var pause15 = new Forms.ToolStripMenuItem("Pause Monitoring 15 Minutes");
             pause15.Click += async (_, _) => await PauseMonitoringAsync(TimeSpan.FromMinutes(15));
             contextMenu.Items.Add(pause15);
@@ -120,6 +125,13 @@ public sealed class TrayShellHostedService(
             var openAuditItem = new Forms.ToolStripMenuItem("Open Audit Store Folder");
             openAuditItem.Click += (_, _) => OpenPath(Path.GetDirectoryName(runtimeOptions.Value.DatabasePath) ?? runtimeOptions.Value.DatabasePath);
             contextMenu.Items.Add(openAuditItem);
+
+            var openLogsItem = new Forms.ToolStripMenuItem("Open Log Folder");
+            openLogsItem.Click += (_, _) => OpenPath(Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                "FileRoutingAgent",
+                "Logs"));
+            contextMenu.Items.Add(openLogsItem);
 
             var exitItem = new Forms.ToolStripMenuItem("Exit");
             exitItem.Click += (_, _) => System.Windows.Application.Current.Shutdown();
@@ -203,6 +215,64 @@ public sealed class TrayShellHostedService(
         {
             logger.LogWarning(exception, "Failed to open configuration editor.");
             OpenPath(snapshotAccessor.Snapshot?.PolicyPath ?? runtimeOptions.Value.PolicyPath);
+        }
+    }
+
+    private async Task ExportSupportBundleAsync()
+    {
+        try
+        {
+            var result = await supportBundleService.CreateBundleAsync(CancellationToken.None);
+            await auditStore.WriteEventAsync(
+                new Core.Domain.AuditEvent(
+                    DateTime.UtcNow,
+                    "support_bundle_exported",
+                    PayloadJson: Core.Domain.JsonPayload.Serialize(new
+                    {
+                        result.BundlePath,
+                        includedFileCount = result.IncludedFiles.Count,
+                        warningCount = result.Warnings.Count
+                    })),
+                CancellationToken.None);
+
+            await System.Windows.Application.Current.Dispatcher.InvokeAsync(() =>
+            {
+                var warningSummary = result.Warnings.Count == 0
+                    ? string.Empty
+                    : $"\n\nWarnings:\n- {string.Join("\n- ", result.Warnings.Take(5))}";
+
+                var message =
+                    $"Support bundle created.\n\n{result.BundlePath}\n\n" +
+                    "Share this zip file for troubleshooting." +
+                    warningSummary;
+
+                System.Windows.MessageBox.Show(
+                    message,
+                    "Support Bundle Created",
+                    System.Windows.MessageBoxButton.OK,
+                    System.Windows.MessageBoxImage.Information);
+
+                OpenPath(result.BundlePath);
+            });
+        }
+        catch (Exception exception)
+        {
+            logger.LogWarning(exception, "Failed to export support bundle.");
+            await auditStore.WriteEventAsync(
+                new Core.Domain.AuditEvent(
+                    DateTime.UtcNow,
+                    "support_bundle_export_failed",
+                    PayloadJson: Core.Domain.JsonPayload.Serialize(new { exception.Message })),
+                CancellationToken.None);
+
+            await System.Windows.Application.Current.Dispatcher.InvokeAsync(() =>
+            {
+                System.Windows.MessageBox.Show(
+                    $"Support bundle export failed.\n\n{exception.Message}",
+                    "Support Bundle Error",
+                    System.Windows.MessageBoxButton.OK,
+                    System.Windows.MessageBoxImage.Error);
+            });
         }
     }
 
@@ -393,10 +463,35 @@ public sealed class TrayShellHostedService(
                 return;
             }
 
+            await auditStore.WriteEventAsync(
+                new Core.Domain.AuditEvent(
+                    DateTime.UtcNow,
+                    "easy_setup_submitted",
+                    PayloadJson: Core.Domain.JsonPayload.Serialize(new
+                    {
+                        input.ProjectId,
+                        input.ProjectName,
+                        input.ProjectRoot,
+                        input.WatchRoot,
+                        input.WorkingCadRoot,
+                        input.WorkingDesignRoot,
+                        input.CadPublishPath,
+                        input.PlotSetsPath,
+                        input.ProgressPrintsPath,
+                        input.ExhibitsPath,
+                        input.CheckPrintsPath,
+                        input.CleanSetsPath,
+                        input.IncludeLocalWrongSaveFolders,
+                        input.CreateStandardFolders,
+                        input.EnableProjectWiseCommandProfile
+                    })),
+                CancellationToken.None);
+
             var updatedPolicy = BuildEasyPolicy(snapshot.Policy, input);
+            FolderEnsureResult? folderEnsureResult = null;
             if (input.CreateStandardFolders)
             {
-                EnsureProjectFolders(updatedPolicy.Projects[0]);
+                folderEnsureResult = EnsureProjectFolders(updatedPolicy.Projects[0]);
             }
 
             var policyPath = snapshot.PolicyPath;
@@ -420,15 +515,28 @@ public sealed class TrayShellHostedService(
                         input.WatchRoot,
                         input.WorkingCadRoot,
                         input.WorkingDesignRoot,
+                        input.CadPublishPath,
+                        input.PlotSetsPath,
+                        input.ProgressPrintsPath,
+                        input.ExhibitsPath,
+                        input.CheckPrintsPath,
+                        input.CleanSetsPath,
                         input.IncludeLocalWrongSaveFolders,
-                        input.EnableProjectWiseCommandProfile
+                        input.EnableProjectWiseCommandProfile,
+                        foldersCreated = folderEnsureResult?.Created.Count ?? 0,
+                        foldersExisting = folderEnsureResult?.Existing.Count ?? 0,
+                        folderCreateErrors = folderEnsureResult?.Failed
                     })),
                 CancellationToken.None);
 
             await System.Windows.Application.Current.Dispatcher.InvokeAsync(() =>
             {
+                var folderWarningText = folderEnsureResult is { Failed.Count: > 0 }
+                    ? $"\n\n{folderEnsureResult.Failed.Count} folders could not be created. Export a support bundle for review."
+                    : string.Empty;
+
                 System.Windows.MessageBox.Show(
-                    "Setup complete. Monitoring is now configured for this project.",
+                    $"Setup complete. Monitoring is now configured for this project.{folderWarningText}",
                     "Easy Setup Complete",
                     System.Windows.MessageBoxButton.OK,
                     System.Windows.MessageBoxImage.Information);
@@ -437,6 +545,13 @@ public sealed class TrayShellHostedService(
         catch (Exception exception)
         {
             logger.LogWarning(exception, "Easy setup wizard failed.");
+            await auditStore.WriteEventAsync(
+                new Core.Domain.AuditEvent(
+                    DateTime.UtcNow,
+                    "easy_setup_failed",
+                    PayloadJson: Core.Domain.JsonPayload.Serialize(new { exception.Message })),
+                CancellationToken.None);
+
             await System.Windows.Application.Current.Dispatcher.InvokeAsync(() =>
             {
                 System.Windows.MessageBox.Show(
@@ -527,7 +642,7 @@ public sealed class TrayShellHostedService(
         return normalized.EndsWith('\\') ? normalized : $"{normalized}\\";
     }
 
-    private static void EnsureProjectFolders(ProjectPolicy project)
+    private static FolderEnsureResult EnsureProjectFolders(ProjectPolicy project)
     {
         var folders = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
@@ -557,9 +672,34 @@ public sealed class TrayShellHostedService(
             }
         }
 
+        var created = new List<string>();
+        var existing = new List<string>();
+        var failed = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+
         foreach (var folder in folders)
         {
-            Directory.CreateDirectory(folder);
+            try
+            {
+                if (Directory.Exists(folder))
+                {
+                    existing.Add(folder);
+                    continue;
+                }
+
+                Directory.CreateDirectory(folder);
+                created.Add(folder);
+            }
+            catch (Exception exception)
+            {
+                failed[folder] = exception.Message;
+            }
         }
+
+        return new FolderEnsureResult(created, existing, failed);
     }
+
+    private sealed record FolderEnsureResult(
+        IReadOnlyList<string> Created,
+        IReadOnlyList<string> Existing,
+        IReadOnlyDictionary<string, string> Failed);
 }

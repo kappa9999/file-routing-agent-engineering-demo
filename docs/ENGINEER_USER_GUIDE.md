@@ -45,6 +45,7 @@ The agent never silently overwrites files.
 - `Run Reconciliation Scan Now`
 - `Diagnostics`
 - `Open Configuration`
+- `Export Support Bundle`
 
 ## Common Questions
 1. I clicked Ignore by mistake.  
@@ -55,3 +56,6 @@ Use `Run Reconciliation Scan Now` from tray menu.
 
 3. I changed folders for my project.  
 Run `Easy Setup Wizard` again and update Project Root.
+
+4. I need to send setup/test results for troubleshooting.  
+Click `Export Support Bundle` from the tray menu, then share the zip created on Desktop (`FileRoutingAgent_Support_*.zip`).

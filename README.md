@@ -11,6 +11,9 @@ Built for Windows 11 teams using shared SMB project folders and Bentley CAD work
   - Project Root Folder
   - Review/Edit all key folders before applying (watch root, working folders, official destinations)
   - Optional checkboxes for recommended defaults
+- The tray app also includes **Export Support Bundle**:
+  - Creates one zip on Desktop with policy, preferences, audit DB, scan history, and app logs.
+  - Share that zip for troubleshooting instead of manually describing issues.
 - The wizard automatically configures:
   - Working roots
   - Official CAD/PDF destinations
@@ -81,6 +84,7 @@ dotnet run --project FileRoutingAgent.App
 - `Run Reconciliation Scan Now`
 - `Open Configuration`
 - `Diagnostics`
+- `Export Support Bundle`
 
 ### Build One-Click Demo Bundle
 ```powershell
@@ -142,11 +146,13 @@ Expected behavior:
   - root availability
   - scan history
   - connector publish activity (`connector`, `status`, `success`, `externalTransactionId`, `error`)
+- `Export Support Bundle` creates a support zip you can send after a setup/test run.
 
 ## Runtime Data Locations
 - User preferences: `%LOCALAPPDATA%\FileRoutingAgent\user-preferences.json`
 - SQLite state/audit: `%LOCALAPPDATA%\FileRoutingAgent\state.db`
 - App logs: `%LOCALAPPDATA%\FileRoutingAgent\Logs\agent-*.log`
+- Support bundle export: `%USERPROFILE%\Desktop\FileRoutingAgent_Support_*.zip`
 
 ## Policy Signature Refresh
 When policy JSON changes:
