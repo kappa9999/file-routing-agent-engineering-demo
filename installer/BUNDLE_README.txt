@@ -10,6 +10,7 @@ This installs:
 - App binaries
 - Start Menu and Desktop shortcuts
 - Sample ProjectWise connector script template
+- Writable config permissions so Easy Setup can save without admin elevation
 
 Optional remote setup tools:
 - remote-scripts\01-Enable-RemoteAccess.ps1

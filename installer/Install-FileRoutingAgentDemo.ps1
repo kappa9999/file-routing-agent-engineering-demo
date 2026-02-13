@@ -39,6 +39,22 @@ function New-Shortcut {
     $shortcut.Save()
 }
 
+function Ensure-ConfigWritableForUsers {
+    param([string]$ConfigRoot)
+
+    if (-not (Test-Path -LiteralPath $ConfigRoot)) {
+        return
+    }
+
+    try {
+        & icacls $ConfigRoot /grant "BUILTIN\Users:(OI)(CI)M" /T | Out-Null
+        Write-Step "Granted BUILTIN\\Users modify rights on config folder."
+    }
+    catch {
+        Write-Step "Warning: could not update config ACLs. Easy Setup may require admin rights."
+    }
+}
+
 function Update-PolicyConnectorPath {
     param(
         [string]$PolicyPath,
@@ -111,6 +127,7 @@ try {
 
     Write-Step "Copying application files..."
     Copy-Directory -Source $sourceAppRoot -Destination $installAppRoot
+    Ensure-ConfigWritableForUsers -ConfigRoot (Join-Path $installAppRoot "Config")
 
     if (Test-Path -LiteralPath $sourceDocsRoot) {
         Write-Step "Copying documentation..."
