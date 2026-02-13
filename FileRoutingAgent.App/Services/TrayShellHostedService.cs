@@ -24,6 +24,7 @@ public sealed class TrayShellHostedService(
 {
     private Forms.NotifyIcon? _notifyIcon;
     private Forms.ToolStripMenuItem? _statusMenuItem;
+    private bool _startupPromptShown;
 
     public async Task StartAsync(CancellationToken cancellationToken)
     {
@@ -32,6 +33,12 @@ public sealed class TrayShellHostedService(
         await auditStore.WriteEventAsync(
             new Core.Domain.AuditEvent(DateTime.UtcNow, "tray_started"),
             cancellationToken);
+
+        _ = Task.Run(async () =>
+        {
+            await Task.Delay(TimeSpan.FromSeconds(3), CancellationToken.None);
+            await PromptEasySetupIfNeededAsync();
+        });
     }
 
     public Task StopAsync(CancellationToken cancellationToken)
@@ -101,6 +108,14 @@ public sealed class TrayShellHostedService(
             var openConfigItem = new Forms.ToolStripMenuItem("Open Configuration");
             openConfigItem.Click += async (_, _) => await ShowConfigurationEditorAsync();
             contextMenu.Items.Add(openConfigItem);
+
+            var easySetupItem = new Forms.ToolStripMenuItem("Easy Setup Wizard (Recommended)");
+            easySetupItem.Click += async (_, _) => await ShowEasySetupWizardAsync(forceShow: true);
+            contextMenu.Items.Add(easySetupItem);
+
+            var openGuideItem = new Forms.ToolStripMenuItem("Open Simple User Guide");
+            openGuideItem.Click += (_, _) => OpenEngineerGuide();
+            contextMenu.Items.Add(openGuideItem);
 
             var openAuditItem = new Forms.ToolStripMenuItem("Open Audit Store Folder");
             openAuditItem.Click += (_, _) => OpenPath(Path.GetDirectoryName(runtimeOptions.Value.DatabasePath) ?? runtimeOptions.Value.DatabasePath);
@@ -258,6 +273,14 @@ public sealed class TrayShellHostedService(
     {
         try
         {
+            if (Uri.TryCreate(path, UriKind.Absolute, out var uri) &&
+                (uri.Scheme.Equals("http", StringComparison.OrdinalIgnoreCase) ||
+                 uri.Scheme.Equals("https", StringComparison.OrdinalIgnoreCase)))
+            {
+                Process.Start(new ProcessStartInfo(path) { UseShellExecute = true });
+                return;
+            }
+
             if (File.Exists(path))
             {
                 Process.Start(new ProcessStartInfo(path) { UseShellExecute = true });
@@ -272,6 +295,243 @@ public sealed class TrayShellHostedService(
         catch
         {
             // Ignore launch errors from shell open.
+        }
+    }
+
+    private static void OpenEngineerGuide()
+    {
+        var candidates = new[]
+        {
+            Path.Combine(AppContext.BaseDirectory, "docs", "ENGINEER_USER_GUIDE.md"),
+            Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "docs", "ENGINEER_USER_GUIDE.md"))
+        };
+
+        foreach (var candidate in candidates)
+        {
+            if (File.Exists(candidate))
+            {
+                OpenPath(candidate);
+                return;
+            }
+        }
+
+        OpenPath("https://github.com/kappa9999/file-routing-agent-engineering-demo/blob/main/docs/ENGINEER_USER_GUIDE.md");
+    }
+
+    private async Task PromptEasySetupIfNeededAsync()
+    {
+        if (_startupPromptShown)
+        {
+            return;
+        }
+
+        _startupPromptShown = true;
+
+        try
+        {
+            var snapshot = snapshotAccessor.Snapshot ?? await runtimePolicyRefresher.RefreshAsync(CancellationToken.None);
+            snapshotAccessor.Update(snapshot);
+
+            if (snapshot.SafeModeEnabled)
+            {
+                return;
+            }
+
+            if (!NeedsEasySetup(snapshot))
+            {
+                return;
+            }
+
+            var shouldOpen = false;
+            await System.Windows.Application.Current.Dispatcher.InvokeAsync(() =>
+            {
+                var result = System.Windows.MessageBox.Show(
+                    "File Routing Agent is not fully configured for this machine.\n\nOpen Easy Setup Wizard now?",
+                    "Easy Setup Recommended",
+                    System.Windows.MessageBoxButton.YesNo,
+                    System.Windows.MessageBoxImage.Question);
+                shouldOpen = result == System.Windows.MessageBoxResult.Yes;
+            });
+
+            if (!shouldOpen)
+            {
+                return;
+            }
+
+            await ShowEasySetupWizardAsync(forceShow: false);
+        }
+        catch (Exception exception)
+        {
+            logger.LogWarning(exception, "Failed during startup easy setup prompt.");
+        }
+    }
+
+    private async Task ShowEasySetupWizardAsync(bool forceShow)
+    {
+        try
+        {
+            var snapshot = snapshotAccessor.Snapshot ?? await runtimePolicyRefresher.RefreshAsync(CancellationToken.None);
+            snapshotAccessor.Update(snapshot);
+
+            if (!forceShow && !NeedsEasySetup(snapshot))
+            {
+                return;
+            }
+
+            EasySetupInput? input = null;
+            await System.Windows.Application.Current.Dispatcher.InvokeAsync(() =>
+            {
+                var window = new EasySetupWizardWindow();
+                if (window.ShowDialog() == true)
+                {
+                    input = window.Result;
+                }
+            });
+
+            if (input is null)
+            {
+                return;
+            }
+
+            var updatedPolicy = BuildEasyPolicy(snapshot.Policy, input);
+            if (input.CreateStandardFolders)
+            {
+                EnsureProjectFolders(updatedPolicy.Projects[0]);
+            }
+
+            var policyPath = snapshot.PolicyPath;
+            var signaturePath = PolicyEditorUtility.ResolveSignaturePath(updatedPolicy, policyPath);
+
+            await File.WriteAllTextAsync(policyPath, PolicyEditorUtility.SerializePolicy(updatedPolicy), CancellationToken.None);
+            var signature = PolicyEditorUtility.ComputeSha256Hex(policyPath);
+            await File.WriteAllTextAsync(signaturePath, signature, CancellationToken.None);
+
+            var refreshed = await runtimePolicyRefresher.RefreshAsync(CancellationToken.None);
+            snapshotAccessor.Update(refreshed);
+
+            await auditStore.WriteEventAsync(
+                new Core.Domain.AuditEvent(
+                    DateTime.UtcNow,
+                    "easy_setup_applied",
+                    PayloadJson: Core.Domain.JsonPayload.Serialize(new
+                    {
+                        input.ProjectId,
+                        input.ProjectRoot,
+                        input.IncludeLocalWrongSaveFolders,
+                        input.EnableProjectWiseCommandProfile
+                    })),
+                CancellationToken.None);
+
+            await System.Windows.Application.Current.Dispatcher.InvokeAsync(() =>
+            {
+                System.Windows.MessageBox.Show(
+                    "Setup complete. Monitoring is now configured for this project.",
+                    "Easy Setup Complete",
+                    System.Windows.MessageBoxButton.OK,
+                    System.Windows.MessageBoxImage.Information);
+            });
+        }
+        catch (Exception exception)
+        {
+            logger.LogWarning(exception, "Easy setup wizard failed.");
+            await System.Windows.Application.Current.Dispatcher.InvokeAsync(() =>
+            {
+                System.Windows.MessageBox.Show(
+                    $"Easy setup could not be completed.\n\n{exception.Message}",
+                    "Easy Setup Error",
+                    System.Windows.MessageBoxButton.OK,
+                    System.Windows.MessageBoxImage.Error);
+            });
+        }
+    }
+
+    private static bool NeedsEasySetup(RuntimeConfigSnapshot snapshot)
+    {
+        if (snapshot.Policy.Projects.Count == 0)
+        {
+            return true;
+        }
+
+        var firstProject = snapshot.Policy.Projects[0];
+        var hasPlaceholderId = firstProject.ProjectId.Equals("Project123", StringComparison.OrdinalIgnoreCase);
+        var pathMatchersMissing = firstProject.PathMatchers.Count == 0 ||
+                                  firstProject.PathMatchers.All(path => !Directory.Exists(path));
+
+        return hasPlaceholderId && pathMatchersMissing;
+    }
+
+    private static FirmPolicy BuildEasyPolicy(FirmPolicy existingPolicy, EasySetupInput input)
+    {
+        var policy = PolicyEditorUtility.ClonePolicy(existingPolicy);
+        var project = PolicyEditorUtility.BuildProjectTemplate(
+            input.ProjectId,
+            input.ProjectName,
+            input.ProjectRoot,
+            input.EnableProjectWiseCommandProfile);
+
+        policy.Projects.Clear();
+        policy.Projects.Add(project);
+
+        var candidateRoots = new List<string>();
+        if (input.IncludeLocalWrongSaveFolders)
+        {
+            candidateRoots.Add(Environment.GetFolderPath(Environment.SpecialFolder.Desktop));
+            candidateRoots.Add(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Downloads"));
+            candidateRoots.Add(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments));
+        }
+
+        candidateRoots.AddRange(project.WorkingRoots);
+        policy.Monitoring.CandidateRoots = candidateRoots
+            .Where(path => !string.IsNullOrWhiteSpace(path))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        policy.Monitoring.WatchRoots =
+        [
+            input.ProjectRoot.Trim()
+        ];
+
+        if (policy.ManagedExtensions.Count == 0)
+        {
+            policy.ManagedExtensions = [".dgn", ".dwg", ".dxf", ".pdf", ".pset"];
+        }
+
+        return policy;
+    }
+
+    private static void EnsureProjectFolders(ProjectPolicy project)
+    {
+        var folders = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var root in project.WorkingRoots)
+        {
+            if (!string.IsNullOrWhiteSpace(root))
+            {
+                folders.Add(root);
+            }
+        }
+
+        if (!string.IsNullOrWhiteSpace(project.OfficialDestinations.CadPublish))
+        {
+            folders.Add(project.OfficialDestinations.CadPublish);
+        }
+
+        if (!string.IsNullOrWhiteSpace(project.OfficialDestinations.PlotSets))
+        {
+            folders.Add(project.OfficialDestinations.PlotSets);
+        }
+
+        foreach (var destination in project.OfficialDestinations.PdfCategories.Values)
+        {
+            if (!string.IsNullOrWhiteSpace(destination))
+            {
+                folders.Add(destination);
+            }
+        }
+
+        foreach (var folder in folders)
+        {
+            Directory.CreateDirectory(folder);
         }
     }
 }

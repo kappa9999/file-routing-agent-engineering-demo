@@ -3,6 +3,20 @@
 Windows tray-hosted file routing automation for structural/civil engineering outputs.  
 Built for Windows 11 teams using shared SMB project folders and Bentley CAD workflows.
 
+## Non-Technical User Friendly
+- No command line usage is required for normal setup or daily use.
+- The tray app now includes an **Easy Setup Wizard** with simple form fields:
+  - Project ID
+  - Project Name
+  - Project Root Folder
+  - Optional checkboxes for recommended defaults
+- The wizard automatically configures:
+  - Working roots
+  - Official CAD/PDF destinations
+  - Candidate and watch roots
+  - Policy signature refresh
+  - Live policy reload (no restart required)
+
 ## Why This Exists
 - Engineers save CAD and PDF outputs into working folders, Desktop, Downloads, or temporary locations.
 - Teams lose time confirming which print set or drawing is the latest.
@@ -99,6 +113,7 @@ Expected behavior:
 
 ## Admin UX For Demonstration Meeting
 - `Open Configuration` provides:
+  - **Easy Setup Wizard (Recommended)** for non-programmers
   - guided setup window for all key settings and required project paths
   - live JSON editor
   - validation panel
@@ -126,8 +141,9 @@ Set-Content -Path "FileRoutingAgent.App/Config/firm-policy.json.sig" -Value $has
 1. Install sample connector script.
 2. Run local smoke test.
 3. Start tray app.
-4. Save a PDF to a configured working folder.
-5. Show prompt decision and routed destination.
-6. Open Diagnostics and show connector publish activity row.
-7. Show pending queue retry/dismiss flow.
-8. Show audit DB location for traceability.
+4. Run `Easy Setup Wizard` from tray menu and apply project settings.
+5. Save a PDF to a configured working folder.
+6. Show prompt decision and routed destination.
+7. Open Diagnostics and show connector publish activity row.
+8. Show pending queue retry/dismiss flow.
+9. Show audit DB location for traceability.
