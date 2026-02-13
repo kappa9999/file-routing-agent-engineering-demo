@@ -1,0 +1,106 @@
+{
+  "schemaVersion": 2,
+  "policyIntegrity": {
+    "required": true,
+    "algorithm": "sha256",
+    "signatureFile": "firm-policy.json.sig",
+    "publicKeyId": "eng-policy-local"
+  },
+  "monitoring": {
+    "candidateRoots": [
+      "C:\\Users\\%USERNAME%\\Desktop",
+      "C:\\Users\\%USERNAME%\\Downloads",
+      "C:\\Users\\%USERNAME%\\Documents",
+      "P:\\Project123\\60_CAD\\_Working",
+      "P:\\Project123\\70_Design\\_Working"
+    ],
+    "watchRoots": [
+      "P:\\Project123\\"
+    ],
+    "reconciliationIntervalMinutes": 5,
+    "priorityRescanOnWatcherOverflow": true,
+    "promptCooldownMinutes": 20,
+    "renameClusterWindowSeconds": 7
+  },
+  "managedExtensions": [
+    ".dgn",
+    ".dwg",
+    ".dxf",
+    ".pdf",
+    ".pset"
+  ],
+  "ignorePatterns": {
+    "fileGlobs": [
+      "*.tmp",
+      "*.bak",
+      "~$*",
+      "*.dgn.fileinfo.xml",
+      "*.dwl",
+      "*.dwl2",
+      "*.lock",
+      "*.lck"
+    ],
+    "folderGlobs": [
+      "**\\dms*\\**",
+      "**\\_PW_*\\**",
+      "**\\.pwcache\\**"
+    ]
+  },
+  "suppression": {
+    "recentOperationTtlMinutes": 20
+  },
+  "stability": {
+    "minAgeSeconds": 3,
+    "quietSeconds": 8,
+    "checks": 3,
+    "checkIntervalMs": 1500,
+    "requireUnlocked": true,
+    "copySafeOpen": true
+  },
+  "conflictPolicy": {
+    "mode": "version_then_prompt",
+    "versionSuffixTemplate": "_{yyyyMMdd_HHmmss}_{user}_{machine}",
+    "defaultChoice": "keep_both",
+    "allowOverwriteWithConfirmation": true
+  },
+  "projects": [
+    {
+      "projectId": "Project123",
+      "displayName": "Project 123 Bridge Rehab",
+      "pathMatchers": [
+        "P:\\Project123\\",
+        "\\\\fileserver\\Projects\\Project123\\"
+      ],
+      "workingRoots": [
+        "P:\\Project123\\60_CAD\\_Working",
+        "P:\\Project123\\70_Design\\_Working"
+      ],
+      "officialDestinations": {
+        "cadPublish": "P:\\Project123\\60_CAD\\Published",
+        "plotSets": "P:\\Project123\\70_Design\\90_PlotSets",
+        "pdfCategories": {
+          "progress_print": "P:\\Project123\\70_Design\\10_ProgressPrints",
+          "exhibit": "P:\\Project123\\70_Design\\20_Exhibits",
+          "check_print": "P:\\Project123\\70_Design\\30_CheckPrints",
+          "clean_set": "P:\\Project123\\70_Design\\40_CleanSets"
+        }
+      },
+      "defaults": {
+        "pdfAction": "move",
+        "cadAction": "publish_copy",
+        "defaultPdfCategory": "progress_print",
+        "officialDestinationMode": "monitor_no_prompt"
+      },
+      "connector": {
+        "enabled": false,
+        "provider": "projectwise_script",
+        "settings": {
+          "command": "powershell.exe",
+          "arguments": "-NoProfile -ExecutionPolicy Bypass -File \"%ProgramData%\\FileRoutingAgent\\Connectors\\ProjectWisePublish.ps1\" -ProjectId \"{projectId}\" -SourcePath \"{sourcePath}\" -DestinationPath \"{destinationPath}\" -Action \"{action}\" -Category \"{category}\"",
+          "timeoutSeconds": "120",
+          "parseStdoutJson": "true"
+        }
+      }
+    }
+  ]
+}

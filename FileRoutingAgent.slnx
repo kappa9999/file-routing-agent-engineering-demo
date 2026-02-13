@@ -1,0 +1,6 @@
+<Solution>
+  <Project Path="FileRoutingAgent.App/FileRoutingAgent.App.csproj" />
+  <Project Path="FileRoutingAgent.Core/FileRoutingAgent.Core.csproj" />
+  <Project Path="FileRoutingAgent.Infrastructure/FileRoutingAgent.Infrastructure.csproj" />
+  <Project Path="FileRoutingAgent.Tests/FileRoutingAgent.Tests.csproj" />
+</Solution>

@@ -1,0 +1,50 @@
+<Window x:Class="FileRoutingAgent.App.UI.ProjectTemplateWizardWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        ResizeMode="NoResize"
+        WindowStartupLocation="CenterOwner"
+        Title="Add Project Template"
+        Height="320"
+        Width="680">
+  <Grid Margin="14">
+    <Grid.RowDefinitions>
+      <RowDefinition Height="Auto" />
+      <RowDefinition Height="Auto" />
+      <RowDefinition Height="Auto" />
+      <RowDefinition Height="Auto" />
+      <RowDefinition Height="*" />
+      <RowDefinition Height="Auto" />
+    </Grid.RowDefinitions>
+    <Grid.ColumnDefinitions>
+      <ColumnDefinition Width="170" />
+      <ColumnDefinition Width="*" />
+      <ColumnDefinition Width="Auto" />
+    </Grid.ColumnDefinitions>
+
+    <TextBlock Grid.Row="0" Grid.Column="0" Margin="0,0,8,8" VerticalAlignment="Center">Project ID</TextBlock>
+    <TextBox x:Name="ProjectIdTextBox" Grid.Row="0" Grid.Column="1" Grid.ColumnSpan="2" Margin="0,0,0,8" />
+
+    <TextBlock Grid.Row="1" Grid.Column="0" Margin="0,0,8,8" VerticalAlignment="Center">Display Name</TextBlock>
+    <TextBox x:Name="DisplayNameTextBox" Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="2" Margin="0,0,0,8" />
+
+    <TextBlock Grid.Row="2" Grid.Column="0" Margin="0,0,8,8" VerticalAlignment="Center">Project Root</TextBlock>
+    <TextBox x:Name="ProjectRootTextBox" Grid.Row="2" Grid.Column="1" Margin="0,0,8,8" />
+    <Button Grid.Row="2" Grid.Column="2" Width="90" Margin="0,0,0,8" Content="Browse..." Click="BrowseButton_OnClick" />
+
+    <CheckBox x:Name="EnableProjectWiseCommandProfileCheckBox"
+              Grid.Row="3"
+              Grid.Column="0"
+              Grid.ColumnSpan="3"
+              Margin="0,0,0,8"
+              Content="Enable ProjectWise command profile (script/CLI adapter)" />
+
+    <TextBlock Grid.Row="4" Grid.Column="0" Grid.ColumnSpan="3" TextWrapping="Wrap" Margin="0,0,0,8">
+      The wizard will add standard working roots and official destinations under 60_CAD and 70_Design.
+    </TextBlock>
+
+    <StackPanel Grid.Row="5" Grid.Column="0" Grid.ColumnSpan="3" Orientation="Horizontal" HorizontalAlignment="Right">
+      <Button Width="120" Margin="0,0,8,0" Content="Add Template" Click="AddButton_OnClick" />
+      <Button Width="90" Content="Cancel" Click="CancelButton_OnClick" />
+    </StackPanel>
+  </Grid>
+</Window>
