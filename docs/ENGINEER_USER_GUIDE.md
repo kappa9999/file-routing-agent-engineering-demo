@@ -8,15 +8,20 @@ This guide is for civil/structural engineers using the File Routing Agent in dai
 - You do not need to use PowerShell or Command Prompt.
 
 ## First-Time Setup (2-3 Minutes)
-1. Open the tray icon for `File Routing Agent`.
-2. Click `Easy Setup Wizard (Recommended)`.
-3. Enter:
+1. Install by double-clicking `Install-FileRoutingAgentDemo.cmd`.
+2. Open the tray icon for `File Routing Agent`.
+3. Click `Easy Setup Wizard (Recommended)`.
+4. Enter:
    - Project ID (example: `Project123`)
    - Project Name
    - Project Root Folder (browse to your project folder)
-4. Leave recommended checkboxes on unless your admin says otherwise.
-5. Click `Apply Setup`.
-6. You should see `Setup complete`.
+5. Review the folders shown by the wizard:
+   - Watch root
+   - Working folders
+   - Official CAD/PDF destination folders
+6. Change any folder that is not correct using the `Browse...` buttons.
+7. Click `Apply Setup`.
+8. You should see `Setup complete`.
 
 ## Daily Use
 When you save a PDF/CAD file in a working or wrong folder:

@@ -9,6 +9,7 @@ Built for Windows 11 teams using shared SMB project folders and Bentley CAD work
   - Project ID
   - Project Name
   - Project Root Folder
+  - Review/Edit all key folders before applying (watch root, working folders, official destinations)
   - Optional checkboxes for recommended defaults
 - The wizard automatically configures:
   - Working roots
@@ -53,6 +54,15 @@ Built for Windows 11 teams using shared SMB project folders and Bentley CAD work
 - `scripts/Install-ProjectWiseConnectorSample.ps1`: installs sample connector into `%ProgramData%`.
 
 ## Quick Start (Demo Machine)
+### Recommended (No Terminal)
+1. Download the demo bundle zip from GitHub releases.
+2. Extract the zip.
+3. Double-click `Install-FileRoutingAgentDemo.cmd`.
+4. Launch the app from desktop or Start Menu shortcut.
+5. Run `Easy Setup Wizard (Recommended)` from tray menu.
+6. In the wizard, verify/edit each folder path before clicking `Apply Setup`.
+
+### Developer / Build Path
 1. Build and test:
 ```powershell
 dotnet build FileRoutingAgent.slnx
@@ -71,6 +81,13 @@ dotnet run --project FileRoutingAgent.App
 - `Run Reconciliation Scan Now`
 - `Open Configuration`
 - `Diagnostics`
+
+### Build One-Click Demo Bundle
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\Build-DemoBundle.ps1
+```
+Output zip:
+- `artifacts/FileRoutingAgentDemoBundle-win-x64.zip`
 
 ## ProjectWise Command Connector Profile
 The app supports a script/CLI connector profile so you can demonstrate publish metadata flow before deep ProjectWise API integration.
@@ -114,6 +131,7 @@ Expected behavior:
 ## Admin UX For Demonstration Meeting
 - `Open Configuration` provides:
   - **Easy Setup Wizard (Recommended)** for non-programmers
+  - folder-by-folder verification/editing before setup is applied
   - guided setup window for all key settings and required project paths
   - live JSON editor
   - validation panel

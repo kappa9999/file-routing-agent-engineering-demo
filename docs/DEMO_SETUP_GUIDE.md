@@ -13,11 +13,17 @@ This guide is designed for your engineering-firm demonstration meeting and first
 dotnet build FileRoutingAgent.slnx
 dotnet test FileRoutingAgent.slnx --no-build
 ```
-2. Install sample connector script:
+2. Build demo installer bundle:
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\Build-DemoBundle.ps1
+```
+3. Move `artifacts\FileRoutingAgentDemoBundle-win-x64.zip` to the live machine.
+4. On the live machine, extract zip and double-click `Install-FileRoutingAgentDemo.cmd`.
+5. Install sample connector script (source-build path only):
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\Install-ProjectWiseConnectorSample.ps1 -Force
 ```
-3. Run local smoke test:
+6. Run local smoke test:
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\LocalSmokeTest.ps1
 ```

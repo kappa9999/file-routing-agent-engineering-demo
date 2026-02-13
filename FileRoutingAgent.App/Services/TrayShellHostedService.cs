@@ -417,6 +417,9 @@ public sealed class TrayShellHostedService(
                     {
                         input.ProjectId,
                         input.ProjectRoot,
+                        input.WatchRoot,
+                        input.WorkingCadRoot,
+                        input.WorkingDesignRoot,
                         input.IncludeLocalWrongSaveFolders,
                         input.EnableProjectWiseCommandProfile
                     })),
@@ -469,6 +472,25 @@ public sealed class TrayShellHostedService(
             input.ProjectRoot,
             input.EnableProjectWiseCommandProfile);
 
+        project.PathMatchers =
+        [
+            EnsureTrailingSlash(input.ProjectRoot)
+        ];
+        project.WorkingRoots =
+        [
+            input.WorkingCadRoot,
+            input.WorkingDesignRoot
+        ];
+        project.OfficialDestinations.CadPublish = input.CadPublishPath;
+        project.OfficialDestinations.PlotSets = input.PlotSetsPath;
+        project.OfficialDestinations.PdfCategories = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["progress_print"] = input.ProgressPrintsPath,
+            ["exhibit"] = input.ExhibitsPath,
+            ["check_print"] = input.CheckPrintsPath,
+            ["clean_set"] = input.CleanSetsPath
+        };
+
         policy.Projects.Clear();
         policy.Projects.Add(project);
 
@@ -488,7 +510,7 @@ public sealed class TrayShellHostedService(
 
         policy.Monitoring.WatchRoots =
         [
-            input.ProjectRoot.Trim()
+            input.WatchRoot
         ];
 
         if (policy.ManagedExtensions.Count == 0)
@@ -497,6 +519,12 @@ public sealed class TrayShellHostedService(
         }
 
         return policy;
+    }
+
+    private static string EnsureTrailingSlash(string path)
+    {
+        var normalized = path.Trim();
+        return normalized.EndsWith('\\') ? normalized : $"{normalized}\\";
     }
 
     private static void EnsureProjectFolders(ProjectPolicy project)
