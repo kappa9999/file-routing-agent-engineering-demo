@@ -40,6 +40,28 @@ public partial class ConfigurationEditorWindow : System.Windows.Window
         ValidateCurrentPolicy(showSuccess: true);
     }
 
+    private void GuidedSetupButton_OnClick(object sender, System.Windows.RoutedEventArgs e)
+    {
+        if (!TryGetPolicy(out var policy))
+        {
+            return;
+        }
+
+        var wizard = new PolicySetupWizardWindow(policy!)
+        {
+            Owner = this
+        };
+
+        if (wizard.ShowDialog() != true || wizard.UpdatedPolicy is null)
+        {
+            return;
+        }
+
+        PolicyJsonTextBox.Text = PolicyEditorUtility.SerializePolicy(wizard.UpdatedPolicy);
+        ValidateCurrentPolicy(showSuccess: true);
+        AppendStatus("Guided setup changes applied to JSON editor.");
+    }
+
     private void AddProjectButton_OnClick(object sender, System.Windows.RoutedEventArgs e)
     {
         if (!TryGetPolicy(out var policy))

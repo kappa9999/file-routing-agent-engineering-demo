@@ -65,6 +65,7 @@
     <WrapPanel Grid.Row="2" HorizontalAlignment="Right" Margin="0,8,0,0">
       <Button Width="140" Margin="4" Content="Reload From Disk" Click="ReloadButton_OnClick" />
       <Button Width="120" Margin="4" Content="Validate" Click="ValidateButton_OnClick" />
+      <Button Width="130" Margin="4" Content="Guided Setup..." Click="GuidedSetupButton_OnClick" />
       <Button Width="170" Margin="4" Content="Add Project Template" Click="AddProjectButton_OnClick" />
       <Button Width="220" Margin="4" Content="Apply PW Cmd Profile (Unconfigured)" Click="ApplyProjectWiseProfileButton_OnClick" />
       <Button Width="90" Margin="4" Content="Save" Click="SaveButton_OnClick" />

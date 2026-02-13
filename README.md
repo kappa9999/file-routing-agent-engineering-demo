@@ -99,6 +99,7 @@ Expected behavior:
 
 ## Admin UX For Demonstration Meeting
 - `Open Configuration` provides:
+  - guided setup window for all key settings and required project paths
   - live JSON editor
   - validation panel
   - project template wizard

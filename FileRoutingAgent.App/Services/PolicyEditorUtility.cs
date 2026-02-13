@@ -44,6 +44,13 @@ public static class PolicyEditorUtility
         return JsonSerializer.Serialize(policy, JsonOptions);
     }
 
+    public static FirmPolicy ClonePolicy(FirmPolicy policy)
+    {
+        var json = SerializePolicy(policy);
+        var cloned = JsonSerializer.Deserialize<FirmPolicy>(json, JsonOptions);
+        return cloned ?? throw new InvalidOperationException("Failed to clone policy.");
+    }
+
     public static IReadOnlyList<string> ValidatePolicy(FirmPolicy policy)
     {
         var errors = new List<string>();

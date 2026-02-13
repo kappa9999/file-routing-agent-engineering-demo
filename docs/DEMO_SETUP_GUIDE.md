@@ -24,7 +24,7 @@ powershell -ExecutionPolicy Bypass -File .\scripts\LocalSmokeTest.ps1
 
 ## Live Demo Flow (15-20 Minutes)
 1. Open tray app and show menu controls.
-2. Open Configuration and highlight per-project destination categories.
+2. Open Configuration, launch `Guided Setup...`, and show path/category forms.
 3. Save test PDF to `_Working` folder to trigger detection.
 4. Choose `Move` with category `progress_print`.
 5. Show routed file in official destination.

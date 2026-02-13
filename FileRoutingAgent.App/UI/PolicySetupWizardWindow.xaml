@@ -1,0 +1,402 @@
+<Window x:Class="FileRoutingAgent.App.UI.PolicySetupWizardWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Guided Policy Setup"
+        Height="860"
+        Width="1320"
+        WindowStartupLocation="CenterOwner">
+  <Grid Margin="10">
+    <Grid.RowDefinitions>
+      <RowDefinition Height="Auto" />
+      <RowDefinition Height="*" />
+      <RowDefinition Height="Auto" />
+    </Grid.RowDefinitions>
+
+    <TextBlock Grid.Row="0"
+               Margin="0,0,0,8"
+               FontWeight="SemiBold"
+               Text="Configure monitoring, paths, project destinations, and connector settings using forms." />
+
+    <TabControl Grid.Row="1">
+      <TabItem Header="Global Settings">
+        <ScrollViewer VerticalScrollBarVisibility="Auto">
+          <StackPanel Margin="10">
+            <GroupBox Header="Monitoring">
+              <Grid Margin="8">
+                <Grid.ColumnDefinitions>
+                  <ColumnDefinition Width="220" />
+                  <ColumnDefinition Width="100" />
+                  <ColumnDefinition Width="220" />
+                  <ColumnDefinition Width="100" />
+                  <ColumnDefinition Width="260" />
+                  <ColumnDefinition Width="100" />
+                </Grid.ColumnDefinitions>
+                <TextBlock Grid.Column="0" VerticalAlignment="Center">Reconciliation Interval (min)</TextBlock>
+                <TextBox x:Name="ReconciliationIntervalTextBox" Grid.Column="1" Margin="8,0" />
+                <TextBlock Grid.Column="2" VerticalAlignment="Center">Prompt Cooldown (min)</TextBlock>
+                <TextBox x:Name="PromptCooldownTextBox" Grid.Column="3" Margin="8,0" />
+                <TextBlock Grid.Column="4" VerticalAlignment="Center">Rename Cluster Window (sec)</TextBlock>
+                <TextBox x:Name="RenameClusterTextBox" Grid.Column="5" Margin="8,0" />
+              </Grid>
+            </GroupBox>
+
+            <GroupBox Header="Managed Extensions" Margin="0,8,0,0">
+              <StackPanel Margin="8">
+                <TextBlock Text="Comma/space/newline separated. Example: .dgn, .dwg, .dxf, .pdf, .pset" />
+                <TextBox x:Name="ManagedExtensionsTextBox"
+                         Margin="0,6,0,0"
+                         AcceptsReturn="True"
+                         MinHeight="54"
+                         VerticalScrollBarVisibility="Auto" />
+              </StackPanel>
+            </GroupBox>
+
+            <Grid Margin="0,8,0,0">
+              <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="*" />
+              </Grid.ColumnDefinitions>
+
+              <GroupBox Header="Candidate Roots (Prompt-Eligible)" Grid.Column="0" Margin="0,0,8,0">
+                <Grid Margin="8">
+                  <Grid.RowDefinitions>
+                    <RowDefinition Height="*" />
+                    <RowDefinition Height="Auto" />
+                  </Grid.RowDefinitions>
+                  <ListBox x:Name="CandidateRootsListBox" MinHeight="130" />
+                  <StackPanel Grid.Row="1" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,8,0,0">
+                    <Button Width="120" Margin="4" Content="Add Folder..." Click="AddCandidateRootButton_OnClick" />
+                    <Button Width="90" Margin="4" Content="Remove" Click="RemoveCandidateRootButton_OnClick" />
+                  </StackPanel>
+                </Grid>
+              </GroupBox>
+
+              <GroupBox Header="Watch Roots (Observe/Reconcile)" Grid.Column="1" Margin="8,0,0,0">
+                <Grid Margin="8">
+                  <Grid.RowDefinitions>
+                    <RowDefinition Height="*" />
+                    <RowDefinition Height="Auto" />
+                  </Grid.RowDefinitions>
+                  <ListBox x:Name="WatchRootsListBox" MinHeight="130" />
+                  <StackPanel Grid.Row="1" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,8,0,0">
+                    <Button Width="120" Margin="4" Content="Add Folder..." Click="AddWatchRootButton_OnClick" />
+                    <Button Width="90" Margin="4" Content="Remove" Click="RemoveWatchRootButton_OnClick" />
+                  </StackPanel>
+                </Grid>
+              </GroupBox>
+            </Grid>
+
+            <GroupBox Header="Ignore Patterns" Margin="0,8,0,0">
+              <Grid Margin="8">
+                <Grid.ColumnDefinitions>
+                  <ColumnDefinition Width="*" />
+                  <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <StackPanel Grid.Column="0" Margin="0,0,8,0">
+                  <TextBlock Text="File Globs (one per line)" />
+                  <TextBox x:Name="IgnoreFileGlobsTextBox"
+                           Margin="0,6,0,0"
+                           MinHeight="96"
+                           AcceptsReturn="True"
+                           VerticalScrollBarVisibility="Auto" />
+                </StackPanel>
+                <StackPanel Grid.Column="1" Margin="8,0,0,0">
+                  <TextBlock Text="Folder Globs (one per line)" />
+                  <TextBox x:Name="IgnoreFolderGlobsTextBox"
+                           Margin="0,6,0,0"
+                           MinHeight="96"
+                           AcceptsReturn="True"
+                           VerticalScrollBarVisibility="Auto" />
+                </StackPanel>
+              </Grid>
+            </GroupBox>
+
+            <GroupBox Header="Stability Gate" Margin="0,8,0,0">
+              <Grid Margin="8">
+                <Grid.ColumnDefinitions>
+                  <ColumnDefinition Width="220" />
+                  <ColumnDefinition Width="90" />
+                  <ColumnDefinition Width="220" />
+                  <ColumnDefinition Width="90" />
+                  <ColumnDefinition Width="220" />
+                  <ColumnDefinition Width="90" />
+                </Grid.ColumnDefinitions>
+                <Grid.RowDefinitions>
+                  <RowDefinition Height="Auto" />
+                  <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
+
+                <TextBlock Grid.Row="0" Grid.Column="0" VerticalAlignment="Center">Min Age (sec)</TextBlock>
+                <TextBox x:Name="StabilityMinAgeTextBox" Grid.Row="0" Grid.Column="1" Margin="8,0" />
+                <TextBlock Grid.Row="0" Grid.Column="2" VerticalAlignment="Center">Quiet Window (sec)</TextBlock>
+                <TextBox x:Name="StabilityQuietTextBox" Grid.Row="0" Grid.Column="3" Margin="8,0" />
+                <TextBlock Grid.Row="0" Grid.Column="4" VerticalAlignment="Center">Checks</TextBlock>
+                <TextBox x:Name="StabilityChecksTextBox" Grid.Row="0" Grid.Column="5" Margin="8,0" />
+
+                <TextBlock Grid.Row="1" Grid.Column="0" Margin="0,8,0,0" VerticalAlignment="Center">Check Interval (ms)</TextBlock>
+                <TextBox x:Name="StabilityCheckIntervalTextBox" Grid.Row="1" Grid.Column="1" Margin="8,8,0,0" />
+                <CheckBox x:Name="RequireUnlockedCheckBox"
+                          Grid.Row="1"
+                          Grid.Column="2"
+                          Margin="0,8,0,0"
+                          VerticalAlignment="Center"
+                          Content="Require unlocked file" />
+                <CheckBox x:Name="CopySafeOpenCheckBox"
+                          Grid.Row="1"
+                          Grid.Column="4"
+                          Grid.ColumnSpan="2"
+                          Margin="0,8,0,0"
+                          VerticalAlignment="Center"
+                          Content="Copy-safe open check" />
+              </Grid>
+            </GroupBox>
+
+            <GroupBox Header="Suppression And Conflict" Margin="0,8,0,0">
+              <Grid Margin="8">
+                <Grid.ColumnDefinitions>
+                  <ColumnDefinition Width="220" />
+                  <ColumnDefinition Width="100" />
+                  <ColumnDefinition Width="220" />
+                  <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <Grid.RowDefinitions>
+                  <RowDefinition Height="Auto" />
+                  <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
+
+                <TextBlock Grid.Row="0" Grid.Column="0" VerticalAlignment="Center">Recent Operation TTL (min)</TextBlock>
+                <TextBox x:Name="SuppressionTtlTextBox" Grid.Row="0" Grid.Column="1" Margin="8,0" />
+                <TextBlock Grid.Row="0" Grid.Column="2" VerticalAlignment="Center">Version Suffix Template</TextBlock>
+                <TextBox x:Name="VersionSuffixTemplateTextBox" Grid.Row="0" Grid.Column="3" Margin="8,0,0,0" />
+
+                <CheckBox x:Name="AllowOverwriteCheckBox"
+                          Grid.Row="1"
+                          Grid.Column="0"
+                          Grid.ColumnSpan="4"
+                          Margin="0,8,0,0"
+                          Content="Allow overwrite with explicit confirmation prompt" />
+              </Grid>
+            </GroupBox>
+          </StackPanel>
+        </ScrollViewer>
+      </TabItem>
+
+      <TabItem Header="Project Settings">
+        <ScrollViewer VerticalScrollBarVisibility="Auto">
+          <StackPanel Margin="10">
+            <GroupBox Header="Project Selection">
+              <Grid Margin="8">
+                <Grid.ColumnDefinitions>
+                  <ColumnDefinition Width="*" />
+                  <ColumnDefinition Width="Auto" />
+                  <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <ComboBox x:Name="ProjectSelector"
+                          DisplayMemberPath="ProjectId"
+                          SelectionChanged="ProjectSelector_OnSelectionChanged" />
+                <Button Grid.Column="1" Width="110" Margin="8,0,0,0" Content="Add Project" Click="AddProjectButton_OnClick" />
+                <Button Grid.Column="2" Width="130" Margin="8,0,0,0" Content="Remove Project" Click="RemoveProjectButton_OnClick" />
+              </Grid>
+            </GroupBox>
+
+            <GroupBox Header="Project Identity" Margin="0,8,0,0">
+              <Grid Margin="8">
+                <Grid.ColumnDefinitions>
+                  <ColumnDefinition Width="160" />
+                  <ColumnDefinition Width="*" />
+                  <ColumnDefinition Width="160" />
+                  <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <TextBlock Grid.Column="0" VerticalAlignment="Center">Project ID</TextBlock>
+                <TextBox x:Name="ProjectIdTextBox" Grid.Column="1" Margin="8,0" />
+                <TextBlock Grid.Column="2" VerticalAlignment="Center">Display Name</TextBlock>
+                <TextBox x:Name="ProjectDisplayNameTextBox" Grid.Column="3" Margin="8,0,0,0" />
+              </Grid>
+            </GroupBox>
+
+            <Grid Margin="0,8,0,0">
+              <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="*" />
+              </Grid.ColumnDefinitions>
+
+              <GroupBox Header="Path Matchers" Grid.Column="0" Margin="0,0,8,0">
+                <Grid Margin="8">
+                  <Grid.RowDefinitions>
+                    <RowDefinition Height="*" />
+                    <RowDefinition Height="Auto" />
+                  </Grid.RowDefinitions>
+                  <ListBox x:Name="PathMatchersListBox" MinHeight="120" />
+                  <StackPanel Grid.Row="1" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,8,0,0">
+                    <Button Width="120" Margin="4" Content="Add Folder..." Click="AddPathMatcherButton_OnClick" />
+                    <Button Width="90" Margin="4" Content="Remove" Click="RemovePathMatcherButton_OnClick" />
+                  </StackPanel>
+                </Grid>
+              </GroupBox>
+
+              <GroupBox Header="Working Roots" Grid.Column="1" Margin="8,0,0,0">
+                <Grid Margin="8">
+                  <Grid.RowDefinitions>
+                    <RowDefinition Height="*" />
+                    <RowDefinition Height="Auto" />
+                  </Grid.RowDefinitions>
+                  <ListBox x:Name="WorkingRootsListBox" MinHeight="120" />
+                  <StackPanel Grid.Row="1" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,8,0,0">
+                    <Button Width="120" Margin="4" Content="Add Folder..." Click="AddWorkingRootButton_OnClick" />
+                    <Button Width="90" Margin="4" Content="Remove" Click="RemoveWorkingRootButton_OnClick" />
+                  </StackPanel>
+                </Grid>
+              </GroupBox>
+            </Grid>
+
+            <GroupBox Header="Official Destinations" Margin="0,8,0,0">
+              <Grid Margin="8">
+                <Grid.ColumnDefinitions>
+                  <ColumnDefinition Width="160" />
+                  <ColumnDefinition Width="*" />
+                  <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <Grid.RowDefinitions>
+                  <RowDefinition Height="Auto" />
+                  <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
+
+                <TextBlock Grid.Row="0" Grid.Column="0" VerticalAlignment="Center">CAD Publish</TextBlock>
+                <TextBox x:Name="CadPublishTextBox" Grid.Row="0" Grid.Column="1" Margin="8,0" />
+                <Button Grid.Row="0" Grid.Column="2" Width="90" Margin="8,0,0,0" Content="Browse..." Click="BrowseCadPublishButton_OnClick" />
+
+                <TextBlock Grid.Row="1" Grid.Column="0" Margin="0,8,0,0" VerticalAlignment="Center">Plot Sets</TextBlock>
+                <TextBox x:Name="PlotSetsTextBox" Grid.Row="1" Grid.Column="1" Margin="8,8,0,0" />
+                <Button Grid.Row="1" Grid.Column="2" Width="90" Margin="8,8,0,0" Content="Browse..." Click="BrowsePlotSetsButton_OnClick" />
+              </Grid>
+            </GroupBox>
+
+            <GroupBox Header="PDF Categories" Margin="0,8,0,0">
+              <Grid Margin="8">
+                <Grid.RowDefinitions>
+                  <RowDefinition Height="*" />
+                  <RowDefinition Height="Auto" />
+                  <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
+                <Grid.ColumnDefinitions>
+                  <ColumnDefinition Width="*" />
+                  <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+
+                <ListBox x:Name="PdfCategoriesListBox"
+                         Grid.Row="0"
+                         Grid.Column="0"
+                         Grid.ColumnSpan="2"
+                         MinHeight="120"
+                         SelectionChanged="PdfCategoriesListBox_OnSelectionChanged" />
+
+                <Grid Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="2" Margin="0,8,0,0">
+                  <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="90" />
+                    <ColumnDefinition Width="180" />
+                    <ColumnDefinition Width="90" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                  </Grid.ColumnDefinitions>
+                  <TextBlock Grid.Column="0" VerticalAlignment="Center">Key</TextBlock>
+                  <TextBox x:Name="PdfCategoryKeyTextBox" Grid.Column="1" Margin="8,0" />
+                  <TextBlock Grid.Column="2" VerticalAlignment="Center">Path</TextBlock>
+                  <TextBox x:Name="PdfCategoryPathTextBox" Grid.Column="3" Margin="8,0" />
+                  <Button Grid.Column="4" Width="90" Margin="8,0,0,0" Content="Browse..." Click="BrowsePdfCategoryPathButton_OnClick" />
+                </Grid>
+
+                <StackPanel Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="2" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,8,0,0">
+                  <TextBlock VerticalAlignment="Center" Margin="0,0,8,0">Default Category</TextBlock>
+                  <ComboBox x:Name="DefaultPdfCategoryComboBox" Width="180" Margin="0,0,12,0" />
+                  <Button Width="120" Margin="4" Content="Add / Update" Click="AddOrUpdatePdfCategoryButton_OnClick" />
+                  <Button Width="90" Margin="4" Content="Remove" Click="RemovePdfCategoryButton_OnClick" />
+                </StackPanel>
+              </Grid>
+            </GroupBox>
+
+            <GroupBox Header="Default Actions" Margin="0,8,0,0">
+              <Grid Margin="8">
+                <Grid.ColumnDefinitions>
+                  <ColumnDefinition Width="180" />
+                  <ColumnDefinition Width="160" />
+                  <ColumnDefinition Width="180" />
+                  <ColumnDefinition Width="160" />
+                  <ColumnDefinition Width="200" />
+                  <ColumnDefinition Width="200" />
+                </Grid.ColumnDefinitions>
+
+                <TextBlock Grid.Column="0" VerticalAlignment="Center">PDF Action</TextBlock>
+                <ComboBox x:Name="PdfActionComboBox" Grid.Column="1" Margin="8,0" />
+                <TextBlock Grid.Column="2" VerticalAlignment="Center">CAD Action</TextBlock>
+                <ComboBox x:Name="CadActionComboBox" Grid.Column="3" Margin="8,0" />
+                <TextBlock Grid.Column="4" VerticalAlignment="Center">Official Destination Mode</TextBlock>
+                <ComboBox x:Name="OfficialDestinationModeComboBox" Grid.Column="5" Margin="8,0,0,0" />
+              </Grid>
+            </GroupBox>
+
+            <GroupBox Header="Connector Settings (ProjectWise / Command Profile)" Margin="0,8,0,0">
+              <Grid Margin="8">
+                <Grid.ColumnDefinitions>
+                  <ColumnDefinition Width="180" />
+                  <ColumnDefinition Width="220" />
+                  <ColumnDefinition Width="180" />
+                  <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <Grid.RowDefinitions>
+                  <RowDefinition Height="Auto" />
+                  <RowDefinition Height="Auto" />
+                  <RowDefinition Height="Auto" />
+                  <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
+
+                <CheckBox x:Name="ConnectorEnabledCheckBox"
+                          Grid.Row="0"
+                          Grid.Column="0"
+                          Grid.ColumnSpan="2"
+                          VerticalAlignment="Center"
+                          Content="Enable connector for this project" />
+
+                <TextBlock Grid.Row="0" Grid.Column="2" VerticalAlignment="Center">Provider</TextBlock>
+                <ComboBox x:Name="ConnectorProviderComboBox" Grid.Row="0" Grid.Column="3" Margin="8,0,0,0" />
+
+                <TextBlock Grid.Row="1" Grid.Column="0" Margin="0,8,0,0" VerticalAlignment="Center">Command</TextBlock>
+                <TextBox x:Name="ConnectorCommandTextBox" Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="3" Margin="8,8,0,0" />
+
+                <TextBlock Grid.Row="2" Grid.Column="0" Margin="0,8,0,0" VerticalAlignment="Center">Arguments Template</TextBlock>
+                <TextBox x:Name="ConnectorArgumentsTextBox"
+                         Grid.Row="2"
+                         Grid.Column="1"
+                         Grid.ColumnSpan="3"
+                         Margin="8,8,0,0"
+                         MinHeight="54"
+                         AcceptsReturn="True"
+                         VerticalScrollBarVisibility="Auto" />
+
+                <TextBlock Grid.Row="3" Grid.Column="0" Margin="0,8,0,0" VerticalAlignment="Center">Timeout (sec)</TextBlock>
+                <TextBox x:Name="ConnectorTimeoutTextBox" Grid.Row="3" Grid.Column="1" Margin="8,8,0,0" Width="120" HorizontalAlignment="Left" />
+                <CheckBox x:Name="ConnectorParseStdoutJsonCheckBox"
+                          Grid.Row="3"
+                          Grid.Column="2"
+                          Margin="0,8,0,0"
+                          VerticalAlignment="Center"
+                          Content="Parse stdout JSON metadata" />
+                <Button Grid.Row="3"
+                        Grid.Column="3"
+                        Width="170"
+                        Margin="8,8,0,0"
+                        HorizontalAlignment="Left"
+                        Content="Use Sample PW Profile"
+                        Click="UseSampleConnectorProfileButton_OnClick" />
+              </Grid>
+            </GroupBox>
+          </StackPanel>
+        </ScrollViewer>
+      </TabItem>
+    </TabControl>
+
+    <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,8,0,0">
+      <Button Width="160" Margin="4" Content="Apply To JSON Editor" Click="ApplyButton_OnClick" />
+      <Button Width="90" Margin="4" Content="Cancel" Click="CancelButton_OnClick" />
+    </StackPanel>
+  </Grid>
+</Window>
