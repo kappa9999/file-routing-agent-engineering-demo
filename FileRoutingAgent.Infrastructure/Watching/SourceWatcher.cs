@@ -28,16 +28,17 @@ public sealed class SourceWatcher(
 
         foreach (var root in roots)
         {
-            if (!Directory.Exists(root))
+            var canonicalRoot = canonicalizer.Canonicalize(root);
+            if (!Directory.Exists(canonicalRoot))
             {
-                rootAvailabilityTracker.MarkUnavailable(root, "Watch root unavailable at startup.");
-                logger.LogWarning("Watch root not found at startup: {Root}", root);
+                rootAvailabilityTracker.MarkUnavailable(canonicalRoot, "Watch root unavailable at startup.");
+                logger.LogWarning("Watch root not found at startup: {Root}", canonicalRoot);
                 continue;
             }
 
-            rootAvailabilityTracker.MarkAvailable(root, "Watcher attached.");
+            rootAvailabilityTracker.MarkAvailable(canonicalRoot, "Watcher attached.");
 
-            var watcher = new FileSystemWatcher(root)
+            var watcher = new FileSystemWatcher(canonicalRoot)
             {
                 IncludeSubdirectories = true,
                 NotifyFilter = NotifyFilters.FileName | NotifyFilters.LastWrite | NotifyFilters.CreationTime | NotifyFilters.Size,
@@ -54,16 +55,16 @@ public sealed class SourceWatcher(
             };
             watcher.Error += async (_, _) =>
             {
-                rootAvailabilityTracker.MarkRecovering(root, "Watcher overflow.");
-                logger.LogWarning("Watcher overflow or failure in root {Root}.", root);
+                rootAvailabilityTracker.MarkRecovering(canonicalRoot, "Watcher overflow.");
+                logger.LogWarning("Watcher overflow or failure in root {Root}.", canonicalRoot);
                 if (onOverflow is not null)
                 {
-                    await onOverflow(root);
+                    await onOverflow(canonicalRoot);
                 }
             };
 
             _watchers.Add(watcher);
-            logger.LogInformation("Watching root: {Root}", root);
+            logger.LogInformation("Watching root: {Root}", canonicalRoot);
         }
 
         return Task.CompletedTask;

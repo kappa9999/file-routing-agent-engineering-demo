@@ -47,6 +47,10 @@ public partial class App : System.Windows.Application
                 services.Configure<AgentRuntimeOptions>(context.Configuration.GetSection("AgentRuntime"));
                 services.Configure<AutomationPromptOptions>(context.Configuration.GetSection("AutomationPrompt"));
                 services.PostConfigure<AgentRuntimeOptions>(NormalizeRuntimeOptions);
+                services.Configure<HostOptions>(options =>
+                {
+                    options.BackgroundServiceExceptionBehavior = BackgroundServiceExceptionBehavior.Ignore;
+                });
 
                 services.AddSingleton<IUserPromptService, DesktopPromptService>();
                 services.AddSingleton<SupportBundleService>();

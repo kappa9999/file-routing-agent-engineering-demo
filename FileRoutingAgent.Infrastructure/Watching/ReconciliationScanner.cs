@@ -63,7 +63,15 @@ public sealed class ReconciliationScanner(
             IEnumerable<string> files;
             try
             {
-                files = Directory.EnumerateFiles(canonicalRoot, "*", SearchOption.AllDirectories);
+                files = Directory.EnumerateFiles(
+                    canonicalRoot,
+                    "*",
+                    new EnumerationOptions
+                    {
+                        RecurseSubdirectories = true,
+                        IgnoreInaccessible = true,
+                        AttributesToSkip = FileAttributes.System
+                    });
             }
             catch (Exception exception)
             {

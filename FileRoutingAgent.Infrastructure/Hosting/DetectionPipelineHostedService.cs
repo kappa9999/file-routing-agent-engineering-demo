@@ -56,6 +56,8 @@ public sealed class DetectionPipelineHostedService(
         SingleReader = true,
         SingleWriter = false
     });
+    private readonly SemaphoreSlim _watcherGate = new(1, 1);
+    private bool _watchersStarted;
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
@@ -74,7 +76,7 @@ public sealed class DetectionPipelineHostedService(
                 })),
             stoppingToken);
 
-        await sourceWatcher.StartAsync(HandleSourceCandidateAsync, HandleWatcherOverflowAsync, stoppingToken);
+        await RebindWatchersAsync(stoppingToken);
         await RestorePendingAsync(stoppingToken);
 
         var detectionTask = Task.Run(() => DetectionStageAsync(stoppingToken), stoppingToken);
@@ -102,6 +104,12 @@ public sealed class DetectionPipelineHostedService(
                     snapshot.Policy.SchemaVersion
                 })),
             cancellationToken);
+
+        if (_watchersStarted && !cancellationToken.IsCancellationRequested)
+        {
+            await RebindWatchersAsync(cancellationToken);
+            scanScheduler.RequestPriorityScan("policy_reloaded");
+        }
 
         return snapshot;
     }
@@ -141,7 +149,7 @@ public sealed class DetectionPipelineHostedService(
         _promptChannel.Writer.TryComplete();
         _transferChannel.Writer.TryComplete();
 
-        await sourceWatcher.DisposeAsync();
+        await StopWatchersAsync(cancellationToken);
         await base.StopAsync(cancellationToken);
     }
 
@@ -542,43 +550,100 @@ public sealed class DetectionPipelineHostedService(
 
     private async Task ScannerLoopAsync(CancellationToken cancellationToken)
     {
+        var nextRegularScanUtc = DateTime.UtcNow;
+
         while (!cancellationToken.IsCancellationRequested)
         {
-            var snapshot = snapshotAccessor.Snapshot;
-            if (snapshot is null)
+            try
             {
-                await Task.Delay(TimeSpan.FromSeconds(5), cancellationToken);
-                continue;
-            }
+                var snapshot = snapshotAccessor.Snapshot;
+                if (snapshot is null || snapshot.SafeModeEnabled)
+                {
+                    await Task.Delay(TimeSpan.FromSeconds(2), cancellationToken);
+                    continue;
+                }
 
-            var intervalMinutes = Math.Max(1, snapshot.Policy.Monitoring.ReconciliationIntervalMinutes);
-            using var timer = new PeriodicTimer(TimeSpan.FromMinutes(intervalMinutes));
+                var interval = TimeSpan.FromMinutes(Math.Max(1, snapshot.Policy.Monitoring.ReconciliationIntervalMinutes));
+                var didRunScan = false;
 
-            while (!cancellationToken.IsCancellationRequested)
-            {
-                await ExecuteScanAsync(priority: false, cancellationToken);
+                if (DateTime.UtcNow >= nextRegularScanUtc)
+                {
+                    await ExecuteScanAsync(priority: false, cancellationToken);
+                    nextRegularScanUtc = DateTime.UtcNow.Add(interval);
+                    didRunScan = true;
+                }
 
                 while (scanScheduler.TryDequeuePriorityScan(out _))
                 {
                     await ExecuteScanAsync(priority: true, cancellationToken);
+                    didRunScan = true;
                 }
 
-                if (!await timer.WaitForNextTickAsync(cancellationToken))
+                if (didRunScan)
                 {
-                    break;
+                    continue;
                 }
+
+                var delay = nextRegularScanUtc - DateTime.UtcNow;
+                if (delay <= TimeSpan.Zero)
+                {
+                    continue;
+                }
+
+                if (delay > TimeSpan.FromSeconds(2))
+                {
+                    delay = TimeSpan.FromSeconds(2);
+                }
+
+                await Task.Delay(delay, cancellationToken);
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                break;
+            }
+            catch (Exception exception)
+            {
+                logger.LogError(exception, "Scanner loop failed unexpectedly. Retrying.");
+                await auditStore.WriteEventAsync(
+                    new AuditEvent(
+                        DateTime.UtcNow,
+                        "scanner_loop_failed",
+                        PayloadJson: JsonPayload.Serialize(new { exception.Message })),
+                    CancellationToken.None);
+                await Task.Delay(TimeSpan.FromSeconds(2), cancellationToken);
             }
         }
     }
 
     private async Task ExecuteScanAsync(bool priority, CancellationToken cancellationToken)
     {
-        var scanRun = await scanner.RunScanAsync(
-            async candidate => await EnqueueWithBackpressureAsync(_detectionChannel.Writer, candidate, "scan_detection_drop", cancellationToken),
-            priority,
-            cancellationToken);
+        try
+        {
+            var scanRun = await scanner.RunScanAsync(
+                async candidate => await EnqueueWithBackpressureAsync(_detectionChannel.Writer, candidate, "scan_detection_drop", cancellationToken),
+                priority,
+                cancellationToken);
 
-        await auditStore.RecordScanRunAsync(scanRun, cancellationToken);
+            await auditStore.RecordScanRunAsync(scanRun, cancellationToken);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (Exception exception)
+        {
+            logger.LogError(exception, "Reconciliation scan failed.");
+            await auditStore.WriteEventAsync(
+                new AuditEvent(
+                    DateTime.UtcNow,
+                    "scan_failed",
+                    PayloadJson: JsonPayload.Serialize(new
+                    {
+                        priority,
+                        exception.Message
+                    })),
+                CancellationToken.None);
+        }
     }
 
     private static bool IsPaused(UserPreferences preferences)
@@ -617,7 +682,47 @@ public sealed class DetectionPipelineHostedService(
                 _detectionChannel.Writer,
                 new DetectionCandidate(item.SourcePath, item.Source, DateTime.UtcNow, PendingItemId: item.Id),
                 "pending_restore_drop",
-                cancellationToken);
+            cancellationToken);
+        }
+    }
+
+    private async Task RebindWatchersAsync(CancellationToken cancellationToken)
+    {
+        await _watcherGate.WaitAsync(cancellationToken);
+        try
+        {
+            if (_watchersStarted)
+            {
+                await sourceWatcher.DisposeAsync();
+                _watchersStarted = false;
+            }
+
+            await sourceWatcher.StartAsync(HandleSourceCandidateAsync, HandleWatcherOverflowAsync, cancellationToken);
+            _watchersStarted = true;
+            logger.LogInformation("Source watchers bound to current policy roots.");
+        }
+        finally
+        {
+            _watcherGate.Release();
+        }
+    }
+
+    private async Task StopWatchersAsync(CancellationToken cancellationToken)
+    {
+        await _watcherGate.WaitAsync(cancellationToken);
+        try
+        {
+            if (!_watchersStarted)
+            {
+                return;
+            }
+
+            await sourceWatcher.DisposeAsync();
+            _watchersStarted = false;
+        }
+        finally
+        {
+            _watcherGate.Release();
         }
     }
 
