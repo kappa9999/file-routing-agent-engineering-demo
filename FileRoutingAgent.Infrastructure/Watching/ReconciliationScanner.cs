@@ -56,9 +56,19 @@ public sealed class ReconciliationScanner(
                 logger.LogWarning(exception, "Failed to load watermark for root {Root}", canonicalRoot);
             }
 
-            var scanCutoffUtc = (watermark?.LastScanUtc ?? DateTime.UtcNow.AddDays(-1)).AddSeconds(-5);
-            var newestSeenUtc = watermark?.LastScanUtc ?? DateTime.MinValue;
-            string? lastSeenPath = watermark?.LastSeenPath;
+            if (watermark is null)
+            {
+                // Bootstrap without replaying historical files on first run.
+                await auditStore.SaveWatermarkAsync(
+                    new RootWatermark(canonicalRoot, DateTime.UtcNow, null),
+                    cancellationToken);
+                logger.LogInformation("Initialized watermark for root {Root}; skipping historical backlog.", canonicalRoot);
+                continue;
+            }
+
+            var scanCutoffUtc = watermark.LastScanUtc.AddSeconds(-5);
+            var newestSeenUtc = watermark.LastScanUtc;
+            string? lastSeenPath = watermark.LastSeenPath;
 
             IEnumerable<string> files;
             try

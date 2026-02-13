@@ -307,6 +307,33 @@ public sealed class DetectionPipelineHostedService(
                     continue;
                 }
 
+                if (pipelineItem.Candidate.Source == DetectionSource.ReconciliationScan &&
+                    !pipelineItem.Candidate.PendingItemId.HasValue)
+                {
+                    await auditStore.SavePendingItemAsync(
+                        new PendingItem(
+                            0,
+                            pipelineItem.ClassifiedFile.File.SourcePath,
+                            pipelineItem.ClassifiedFile.File.Fingerprint,
+                            pipelineItem.ProjectResolution.ProjectId,
+                            pipelineItem.ClassifiedFile.Category,
+                            DateTime.UtcNow,
+                            pipelineItem.Candidate.Source,
+                            PendingStatus.Pending,
+                            "Detected during reconciliation scan. Review in pending detections."),
+                        cancellationToken);
+
+                    await auditStore.WriteEventAsync(
+                        new AuditEvent(
+                            DateTime.UtcNow,
+                            "scan_detection_queued_pending",
+                            SourcePath: pipelineItem.ClassifiedFile.File.SourcePath,
+                            Fingerprint: pipelineItem.ClassifiedFile.File.Fingerprint,
+                            ProjectId: project.ProjectId),
+                        cancellationToken);
+                    continue;
+                }
+
                 var defaultAction = project.ToDefaultAction(pipelineItem.ClassifiedFile.Category);
                 var promptContext = new PromptContext(
                     pipelineItem.ClassifiedFile,
@@ -676,12 +703,30 @@ public sealed class DetectionPipelineHostedService(
     private async Task RestorePendingAsync(CancellationToken cancellationToken)
     {
         var pending = await auditStore.GetPendingItemsAsync(cancellationToken);
+        var resumed = 0;
         foreach (var item in pending)
         {
+            // Keep queued/pending items in the Pending Detections UI; only auto-resume interrupted processing items.
+            if (item.Status != PendingStatus.Processing)
+            {
+                continue;
+            }
+
             await EnqueueWithBackpressureAsync(
                 _detectionChannel.Writer,
                 new DetectionCandidate(item.SourcePath, item.Source, DateTime.UtcNow, PendingItemId: item.Id),
                 "pending_restore_drop",
+                cancellationToken);
+            resumed++;
+        }
+
+        if (resumed > 0)
+        {
+            await auditStore.WriteEventAsync(
+                new AuditEvent(
+                    DateTime.UtcNow,
+                    "pending_processing_resumed",
+                    PayloadJson: JsonPayload.Serialize(new { resumed })),
                 cancellationToken);
         }
     }

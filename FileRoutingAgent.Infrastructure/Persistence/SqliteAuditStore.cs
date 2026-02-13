@@ -139,7 +139,14 @@ public sealed class SqliteAuditStore(
             await connection.ExecuteAsync(
                 """
                 INSERT INTO pending_items(source_path, fingerprint, project_id, category, detected_at_utc, source, status, last_error)
-                VALUES(@SourcePath, @Fingerprint, @ProjectId, @Category, @DetectedAtUtc, @Source, @Status, @LastError)
+                SELECT @SourcePath, @Fingerprint, @ProjectId, @Category, @DetectedAtUtc, @Source, @Status, @LastError
+                WHERE NOT EXISTS (
+                    SELECT 1
+                    FROM pending_items
+                    WHERE source_path = @SourcePath
+                      AND fingerprint = @Fingerprint
+                      AND status IN ('Pending', 'Processing')
+                )
                 """,
                 new
                 {

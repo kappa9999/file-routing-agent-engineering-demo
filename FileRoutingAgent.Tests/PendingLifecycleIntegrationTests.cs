@@ -16,7 +16,7 @@ namespace FileRoutingAgent.Tests;
 public sealed class PendingLifecycleIntegrationTests
 {
     [Fact]
-    public async Task RestoredPendingItem_TransfersAndTransitionsToDone()
+    public async Task RestoredProcessingItem_TransfersAndTransitionsToDone()
     {
         var root = Path.Combine(Path.GetTempPath(), "FileRoutingAgentTests", Guid.NewGuid().ToString("N"));
         var workingRoot = Path.Combine(root, "Project123", "70_Design", "_Working");
@@ -41,7 +41,7 @@ public sealed class PendingLifecycleIntegrationTests
                 FileCategory.Pdf,
                 DateTime.UtcNow,
                 DetectionSource.ReconciliationScan,
-                PendingStatus.Pending,
+                PendingStatus.Processing,
                 "Seeded by test."),
             CancellationToken.None);
 
