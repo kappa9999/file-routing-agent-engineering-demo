@@ -21,6 +21,7 @@ powershell -ExecutionPolicy Bypass -File .\scripts\Build-DemoBundle.ps1
 1. Copy `remote-scripts` folder to Machine B.
 2. Right-click `01-Enable-RemoteAccess.cmd` and choose **Run as administrator**.
 3. Note the printed **Machine Name** (example: `ENG-LAPTOP-07`).
+4. If you see a warning about `LocalAccountTokenFilterPolicy`, continue anyway (this is non-blocking in hardened environments).
 
 ## Step 2 (Machine A): Remote install + validation
 1. Open `remote-scripts` on Machine A.

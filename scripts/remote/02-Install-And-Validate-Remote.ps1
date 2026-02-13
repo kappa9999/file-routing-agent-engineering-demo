@@ -34,21 +34,27 @@ function Resolve-BundleZip {
 function Add-TrustedHostIfNeeded {
     param([string]$HostName)
 
-    $clientPath = "WSMan:\localhost\Client\TrustedHosts"
-    $current = (Get-Item -Path $clientPath -ErrorAction Stop).Value
-    $hosts = @()
-    if (-not [string]::IsNullOrWhiteSpace($current)) {
-        $hosts = $current.Split(",") | ForEach-Object { $_.Trim() } | Where-Object { $_ }
-    }
+    try {
+        $clientPath = "WSMan:\localhost\Client\TrustedHosts"
+        $current = (Get-Item -Path $clientPath -ErrorAction Stop).Value
+        $hosts = @()
+        if (-not [string]::IsNullOrWhiteSpace($current)) {
+            $hosts = $current.Split(",") | ForEach-Object { $_.Trim() } | Where-Object { $_ }
+        }
 
-    if ($hosts -contains "*" -or $hosts -contains $HostName) {
-        Write-Step "TrustedHosts already contains '$HostName'."
-        return
-    }
+        if ($hosts -contains "*" -or $hosts -contains $HostName) {
+            Write-Step "TrustedHosts already contains '$HostName'."
+            return
+        }
 
-    $updated = if ($hosts.Count -eq 0) { $HostName } else { ($hosts + $HostName) -join "," }
-    Set-Item -Path $clientPath -Value $updated -Force
-    Write-Step "Added '$HostName' to TrustedHosts."
+        $updated = if ($hosts.Count -eq 0) { $HostName } else { ($hosts + $HostName) -join "," }
+        Set-Item -Path $clientPath -Value $updated -Force
+        Write-Step "Added '$HostName' to TrustedHosts."
+    }
+    catch {
+        Write-Warning "Could not update TrustedHosts automatically. Continuing."
+        Write-Warning "If remote session fails, run this script from an elevated PowerShell or use domain credentials."
+    }
 }
 
 $bundleZip = Resolve-BundleZip -InputPath $LocalBundleZip

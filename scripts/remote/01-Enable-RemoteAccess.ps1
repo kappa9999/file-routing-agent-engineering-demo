@@ -26,13 +26,19 @@ Start-Service -Name WinRM
 
 if ($EnableLocalAdminRemoteToken) {
     Write-Step "Setting LocalAccountTokenFilterPolicy for local admin remoting..."
-    New-Item -Path "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System" -Force | Out-Null
-    New-ItemProperty `
-        -Path "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System" `
-        -Name "LocalAccountTokenFilterPolicy" `
-        -PropertyType DWord `
-        -Value 1 `
-        -Force | Out-Null
+    try {
+        New-Item -Path "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System" -Force | Out-Null
+        New-ItemProperty `
+            -Path "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System" `
+            -Name "LocalAccountTokenFilterPolicy" `
+            -PropertyType DWord `
+            -Value 1 `
+            -Force | Out-Null
+    }
+    catch {
+        Write-Warning "Could not set LocalAccountTokenFilterPolicy. Continuing."
+        Write-Warning "Use domain credentials in Steps 2/3, or run this script in an elevated admin shell with policy permissions."
+    }
 }
 
 Write-Step "Checking WinRM listener and localhost connectivity..."
