@@ -28,6 +28,13 @@ powershell -ExecutionPolicy Bypass -File .\scripts\Install-ProjectWiseConnectorS
 powershell -ExecutionPolicy Bypass -File .\scripts\LocalSmokeTest.ps1
 ```
 
+## Optional: Remote Two-Machine Setup
+If your live machine is separate from your dev machine, use:
+- `docs/REMOTE_SETUP_QUICK_START.md`
+- `scripts/remote/01-Enable-RemoteAccess.ps1`
+- `scripts/remote/02-Install-And-Validate-Remote.ps1`
+- `scripts/remote/03-Collect-RemoteSupport.ps1`
+
 ## Live Demo Flow (15-20 Minutes)
 1. Open tray app and show menu controls.
 2. Launch `Easy Setup Wizard (Recommended)` from tray menu and complete setup.

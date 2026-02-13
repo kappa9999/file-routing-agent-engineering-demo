@@ -51,10 +51,15 @@ $docsDir = Join-Path $bundleDir "docs"
 New-Item -Path $docsDir -ItemType Directory -Force | Out-Null
 Copy-Item -Path (Join-Path $repoRoot "docs\ENGINEER_USER_GUIDE.md") -Destination (Join-Path $docsDir "ENGINEER_USER_GUIDE.md") -Force
 Copy-Item -Path (Join-Path $repoRoot "docs\DEMO_SETUP_GUIDE.md") -Destination (Join-Path $docsDir "DEMO_SETUP_GUIDE.md") -Force
+Copy-Item -Path (Join-Path $repoRoot "docs\REMOTE_SETUP_QUICK_START.md") -Destination (Join-Path $docsDir "REMOTE_SETUP_QUICK_START.md") -Force
 
 $connectorsDir = Join-Path $bundleDir "connectors"
 New-Item -Path $connectorsDir -ItemType Directory -Force | Out-Null
 Copy-Item -Path (Join-Path $repoRoot "scripts\ProjectWisePublish.ps1") -Destination (Join-Path $connectorsDir "ProjectWisePublish.ps1") -Force
+
+if (Test-Path -LiteralPath (Join-Path $repoRoot "scripts\remote")) {
+    Copy-Item -Path (Join-Path $repoRoot "scripts\remote") -Destination (Join-Path $bundleDir "remote-scripts") -Recurse -Force
+}
 
 Copy-Item -Path (Join-Path $repoRoot "installer\Install-FileRoutingAgentDemo.ps1") -Destination (Join-Path $bundleDir "Install-FileRoutingAgentDemo.ps1") -Force
 Copy-Item -Path (Join-Path $repoRoot "installer\Install-FileRoutingAgentDemo.cmd") -Destination (Join-Path $bundleDir "Install-FileRoutingAgentDemo.cmd") -Force

@@ -93,6 +93,18 @@ powershell -ExecutionPolicy Bypass -File .\scripts\Build-DemoBundle.ps1
 Output zip:
 - `artifacts/FileRoutingAgentDemoBundle-win-x64.zip`
 
+### Build Remote Setup Pack
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\Build-RemoteSetupPack.ps1
+```
+Output zip:
+- `artifacts/RemoteSetupPack.zip`
+- Includes:
+  - `remote-scripts/01-Enable-RemoteAccess.ps1`
+  - `remote-scripts/02-Install-And-Validate-Remote.ps1`
+  - `remote-scripts/03-Collect-RemoteSupport.ps1`
+  - `REMOTE_SETUP_QUICK_START.md`
+
 ## ProjectWise Command Connector Profile
 The app supports a script/CLI connector profile so you can demonstrate publish metadata flow before deep ProjectWise API integration.
 
@@ -171,3 +183,6 @@ Set-Content -Path "FileRoutingAgent.App/Config/firm-policy.json.sig" -Value $has
 7. Open Diagnostics and show connector publish activity row.
 8. Show pending queue retry/dismiss flow.
 9. Show audit DB location for traceability.
+
+## Remote Setup Flow (Two Machines)
+See: `docs/REMOTE_SETUP_QUICK_START.md`

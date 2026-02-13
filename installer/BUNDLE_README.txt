@@ -11,5 +11,11 @@ This installs:
 - Start Menu and Desktop shortcuts
 - Sample ProjectWise connector script template
 
+Optional remote setup tools:
+- remote-scripts\01-Enable-RemoteAccess.ps1
+- remote-scripts\02-Install-And-Validate-Remote.ps1
+- remote-scripts\03-Collect-RemoteSupport.ps1
+- docs\REMOTE_SETUP_QUICK_START.md
+
 If you need to remove the app:
 - Run "Uninstall-FileRoutingAgentDemo.ps1" from the install folder.
