@@ -45,6 +45,15 @@ powershell -ExecutionPolicy Bypass -File .\scripts\Build-DemoBundle.ps1
 
 Send that zip for troubleshooting.
 
+## Optional Step 5 (Machine A): Run remote smoke test automatically
+Use this to verify routing pipeline remotely without manual clicking:
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\remote\04-Run-RemoteSmokeTest.ps1 `
+  -ComputerName <MachineB-Tailscale-IP> `
+  -UserName "<MachineB>\\FRAutomation" `
+  -Password "<password>"
+```
+
 ## If Connection Fails
 1. Re-run Step 1 on Machine B as Administrator.
 2. Confirm firewall/AV policy allows WinRM.
