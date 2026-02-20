@@ -112,6 +112,11 @@ public sealed class SupportBundleService(
             safeModeEnabled = snapshot?.SafeModeEnabled ?? false,
             safeModeReason = snapshot?.SafeModeReason,
             projectCount = snapshot?.Policy.Projects.Count ?? 0,
+            demoModeEnabled = snapshot?.DemoMode.Enabled ?? false,
+            demoMirrorFolderName = snapshot?.UserPreferences.DemoMirrorFolderName,
+            demoMirrorRoots = snapshot?.DemoMode.ProjectMirrorRoots,
+            lastDemoMirrorRefreshUtc = snapshot?.UserPreferences.LastDemoMirrorRefreshUtc,
+            lastProjectStructureSummary = snapshot?.UserPreferences.LastProjectStructureSummary,
             recentAuditEventCount = events.Count,
             recentScanRunCount = scans.Count
         };

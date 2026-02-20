@@ -4,6 +4,7 @@ using FileRoutingAgent.Core.Domain;
 using FileRoutingAgent.Core.Interfaces;
 using FileRoutingAgent.Core.Utilities;
 using FileRoutingAgent.Infrastructure.Configuration;
+using FileRoutingAgent.Infrastructure.Pipeline;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
@@ -27,6 +28,8 @@ public sealed class DetectionPipelineHostedService(
     IPathCanonicalizer pathCanonicalizer,
     IConnectorHost connectorHost,
     IScanScheduler scanScheduler,
+    IDemoSnapshotTransformer demoSnapshotTransformer,
+    IDemoSafetyGuard demoSafetyGuard,
     ILogger<DetectionPipelineHostedService> logger) : BackgroundService, IRuntimePolicyRefresher, IManualDetectionIngress
 {
     private readonly Channel<DetectionCandidate> _detectionChannel = Channel.CreateBounded<DetectionCandidate>(new BoundedChannelOptions(5000)
@@ -91,17 +94,21 @@ public sealed class DetectionPipelineHostedService(
 
     public async Task<RuntimeConfigSnapshot> RefreshAsync(CancellationToken cancellationToken)
     {
-        var snapshot = await configManager.GetSnapshotAsync(cancellationToken);
-        snapshotAccessor.Update(snapshot);
+        var baseSnapshot = await configManager.GetSnapshotAsync(cancellationToken);
+        var demoState = DemoModeStateFactory.Resolve(baseSnapshot, pathCanonicalizer);
+        var effectiveSnapshot = demoSnapshotTransformer.ApplyDemoOverlay(baseSnapshot, demoState, pathCanonicalizer);
+        snapshotAccessor.Update(effectiveSnapshot);
         await auditStore.WriteEventAsync(
             new AuditEvent(
                 DateTime.UtcNow,
                 "policy_reloaded",
                 PayloadJson: JsonPayload.Serialize(new
                 {
-                    safeMode = snapshot.SafeModeEnabled,
-                    reason = snapshot.SafeModeReason,
-                    snapshot.Policy.SchemaVersion
+                    safeMode = effectiveSnapshot.SafeModeEnabled,
+                    reason = effectiveSnapshot.SafeModeReason,
+                    effectiveSnapshot.Policy.SchemaVersion,
+                    demoModeEnabled = effectiveSnapshot.DemoMode.Enabled,
+                    demoMirrorRoots = effectiveSnapshot.DemoMode.ProjectMirrorRoots.Count
                 })),
             cancellationToken);
 
@@ -111,7 +118,7 @@ public sealed class DetectionPipelineHostedService(
             scanScheduler.RequestPriorityScan("policy_reloaded");
         }
 
-        return snapshot;
+        return effectiveSnapshot;
     }
 
     public async Task<bool> EnqueueAsync(DetectionCandidate candidate, CancellationToken cancellationToken)
@@ -192,6 +199,22 @@ public sealed class DetectionPipelineHostedService(
 
                 if (await suppressor.ShouldSuppressAsync(normalized, cancellationToken))
                 {
+                    continue;
+                }
+
+                if (snapshot.DemoMode.Enabled &&
+                    !demoSafetyGuard.IsPathInMirrorScope(normalized.SourcePath, snapshot.DemoMode, pathCanonicalizer))
+                {
+                    await auditStore.WriteEventAsync(
+                        new AuditEvent(
+                            DateTime.UtcNow,
+                            "demo_scope_filtered",
+                            SourcePath: normalized.SourcePath,
+                            PayloadJson: JsonPayload.Serialize(new
+                            {
+                                source = normalized.Source.ToString()
+                            })),
+                        cancellationToken);
                     continue;
                 }
 
@@ -492,6 +515,33 @@ public sealed class DetectionPipelineHostedService(
         {
             while (_transferChannel.Reader.TryRead(out var plan))
             {
+                var snapshot = snapshotAccessor.Snapshot;
+                var demoState = snapshot?.DemoMode ?? DemoModeState.Disabled;
+                if (demoState.Enabled &&
+                    !demoSafetyGuard.IsAllowed(plan, demoState, out var blockReason))
+                {
+                    await auditStore.WriteEventAsync(
+                        new AuditEvent(
+                            DateTime.UtcNow,
+                            "demo_safety_blocked",
+                            SourcePath: plan.ClassifiedFile.File.SourcePath,
+                            DestinationPath: plan.Conflict.FinalDestinationPath,
+                            Fingerprint: plan.ClassifiedFile.File.Fingerprint,
+                            ProjectId: plan.Project.ProjectId,
+                            PayloadJson: JsonPayload.Serialize(new { reason = blockReason })),
+                        cancellationToken);
+
+                    if (plan.PendingItemId.HasValue)
+                    {
+                        await auditStore.UpdatePendingStatusAsync(
+                            plan.PendingItemId.Value,
+                            PendingStatus.Error,
+                            blockReason,
+                            cancellationToken);
+                    }
+                    continue;
+                }
+
                 var result = await transferEngine.ExecuteAsync(plan, cancellationToken);
                 logger.LogInformation(
                     "Transfer result: success={Success} attempts={Attempts} source={Source} destination={Destination} error={Error}",
@@ -542,7 +592,7 @@ public sealed class DetectionPipelineHostedService(
                         cancellationToken);
                 }
 
-                var snapshot = snapshotAccessor.Snapshot;
+                snapshot = snapshotAccessor.Snapshot;
                 if (snapshot is null)
                 {
                     continue;

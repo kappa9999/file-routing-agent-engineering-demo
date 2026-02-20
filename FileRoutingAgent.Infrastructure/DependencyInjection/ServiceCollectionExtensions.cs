@@ -32,6 +32,10 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<IConflictResolver, ConflictResolver>();
         services.AddSingleton<ITransferEngine, TransferEngine>();
         services.AddSingleton<IRootAvailabilityTracker, RootAvailabilityTracker>();
+        services.AddSingleton<IProjectStructureAuditor, ProjectStructureAuditor>();
+        services.AddSingleton<IDemoMirrorService, DemoMirrorService>();
+        services.AddSingleton<IDemoSnapshotTransformer, DemoSnapshotTransformer>();
+        services.AddSingleton<IDemoSafetyGuard, DemoSafetyGuard>();
         services.AddSingleton<IExternalSystemConnector, CommandProcessConnector>();
         services.AddSingleton<IExternalSystemConnector, ProjectWiseStubConnector>();
         services.AddSingleton<IConnectorHost, ConnectorHost>();

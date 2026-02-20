@@ -42,6 +42,7 @@ Built for Windows 11 teams using shared SMB project folders and Bentley CAD work
 - Pending queue that survives restart.
 - Policy integrity check (`firm-policy.json` + signature hash).
 - Connector adapter boundary for future ProjectWise integration.
+- Safe Demo Mirror Mode (`_FRA_Demo`) to isolate presentation/testing from live project folders.
 
 ## Architecture At A Glance
 - `FileRoutingAgent.App`: WPF tray UX, prompts, diagnostics, config editor.
@@ -64,6 +65,10 @@ Built for Windows 11 teams using shared SMB project folders and Bentley CAD work
 4. Launch the app from desktop or Start Menu shortcut.
 5. Run `Easy Setup Wizard (Recommended)` from tray menu.
 6. In the wizard, verify/edit each folder path before clicking `Apply Setup`.
+7. For live-project demos, run:
+   - `Run Project Structure Check`
+   - `Build/Refresh Demo Mirror Now`
+   - `Demo Mode: Toggle On/Off` until status shows `Demo Mode (Mirror Only)`.
 
 ### Developer / Build Path
 1. Build and test:
@@ -178,6 +183,8 @@ Set-Content -Path "FileRoutingAgent.App/Config/firm-policy.json.sig" -Value $has
 ```
 
 ## Demonstration Checklist (Engineering Firm)
+For live-folder safety checklist, see: `docs/DEMO_PRESENTATION_CHECKLIST.md`
+
 1. Install sample connector script.
 2. Run local smoke test.
 3. Start tray app.

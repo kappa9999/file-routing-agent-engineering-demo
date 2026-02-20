@@ -8,14 +8,20 @@ public partial class DiagnosticsWindow : System.Windows.Window
     public DiagnosticsWindow(
         IReadOnlyCollection<RootStateSnapshot> rootStates,
         IReadOnlyList<ScanRunEntry> scanRuns,
-        IReadOnlyList<AuditEventEntry> auditEvents)
+        IReadOnlyList<AuditEventEntry> auditEvents,
+        DemoModeState demoModeState,
+        string? structureSummary)
     {
         InitializeComponent();
 
         var connectorRows = BuildConnectorRows(auditEvents);
+        var mirrorRootCount = demoModeState.ProjectMirrorRoots.Count;
+        var demoStatus = demoModeState.Enabled ? "ON (Mirror Only)" : "OFF";
 
         SummaryText.Text =
-            $"Roots: {rootStates.Count} | Scan runs loaded: {scanRuns.Count} | Connector events: {connectorRows.Count}";
+            $"Roots: {rootStates.Count} | Scan runs loaded: {scanRuns.Count} | Connector events: {connectorRows.Count}\n" +
+            $"Demo Mode: {demoStatus} | Mirror roots: {mirrorRootCount} | Last mirror refresh: {(demoModeState.LastRefreshedUtc?.ToString("u") ?? "-")}\n" +
+            $"Last structure summary: {(string.IsNullOrWhiteSpace(structureSummary) ? "-" : structureSummary)}";
 
         RootsGrid.ItemsSource = rootStates
             .OrderBy(snapshot => snapshot.RootPath)

@@ -51,6 +51,7 @@ $docsDir = Join-Path $bundleDir "docs"
 New-Item -Path $docsDir -ItemType Directory -Force | Out-Null
 Copy-Item -Path (Join-Path $repoRoot "docs\ENGINEER_USER_GUIDE.md") -Destination (Join-Path $docsDir "ENGINEER_USER_GUIDE.md") -Force
 Copy-Item -Path (Join-Path $repoRoot "docs\DEMO_SETUP_GUIDE.md") -Destination (Join-Path $docsDir "DEMO_SETUP_GUIDE.md") -Force
+Copy-Item -Path (Join-Path $repoRoot "docs\DEMO_PRESENTATION_CHECKLIST.md") -Destination (Join-Path $docsDir "DEMO_PRESENTATION_CHECKLIST.md") -Force
 Copy-Item -Path (Join-Path $repoRoot "docs\REMOTE_SETUP_QUICK_START.md") -Destination (Join-Path $docsDir "REMOTE_SETUP_QUICK_START.md") -Force
 
 $connectorsDir = Join-Path $bundleDir "connectors"

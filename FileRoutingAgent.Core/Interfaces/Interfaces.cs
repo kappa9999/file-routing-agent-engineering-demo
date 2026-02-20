@@ -168,3 +168,27 @@ public interface IScanScheduler
     void RequestPriorityScan(string rootPath);
     bool TryDequeuePriorityScan(out string? rootPath);
 }
+
+public interface IProjectStructureAuditor
+{
+    Task<ProjectStructureReport> CheckAsync(ProjectPolicy project, CancellationToken cancellationToken);
+}
+
+public interface IDemoMirrorService
+{
+    Task<DemoMirrorRefreshResult> RefreshAsync(ProjectPolicy project, DemoModeState state, CancellationToken cancellationToken);
+}
+
+public interface IDemoSnapshotTransformer
+{
+    RuntimeConfigSnapshot ApplyDemoOverlay(
+        RuntimeConfigSnapshot baseSnapshot,
+        DemoModeState state,
+        IPathCanonicalizer canonicalizer);
+}
+
+public interface IDemoSafetyGuard
+{
+    bool IsAllowed(TransferPlan plan, DemoModeState state, out string reason);
+    bool IsPathInMirrorScope(string path, DemoModeState state, IPathCanonicalizer canonicalizer);
+}

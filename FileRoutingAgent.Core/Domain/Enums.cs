@@ -46,3 +46,11 @@ public enum RootAvailabilityState
     Recovering = 2
 }
 
+public enum StructurePathStatus
+{
+    Exists = 0,
+    Missing = 1,
+    OutsideProjectRoot = 2,
+    AccessDenied = 3,
+    Invalid = 4
+}

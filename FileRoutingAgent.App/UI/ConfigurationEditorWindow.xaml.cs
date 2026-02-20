@@ -2,6 +2,7 @@ using FileRoutingAgent.App.Services;
 using FileRoutingAgent.Core.Configuration;
 using FileRoutingAgent.Core.Interfaces;
 using FileRoutingAgent.Infrastructure.Configuration;
+using FileRoutingAgent.Infrastructure.Pipeline;
 using System.IO;
 
 namespace FileRoutingAgent.App.UI;
@@ -10,16 +11,28 @@ public partial class ConfigurationEditorWindow : System.Windows.Window
 {
     private readonly RuntimeConfigSnapshotAccessor _snapshotAccessor;
     private readonly IRuntimePolicyRefresher _runtimePolicyRefresher;
+    private readonly IPolicyConfigManager _policyConfigManager;
+    private readonly IProjectStructureAuditor _projectStructureAuditor;
+    private readonly IDemoMirrorService _demoMirrorService;
+    private readonly IPathCanonicalizer _pathCanonicalizer;
 
     private string _policyPath = string.Empty;
     private string _signaturePath = string.Empty;
 
     public ConfigurationEditorWindow(
         RuntimeConfigSnapshotAccessor snapshotAccessor,
-        IRuntimePolicyRefresher runtimePolicyRefresher)
+        IRuntimePolicyRefresher runtimePolicyRefresher,
+        IPolicyConfigManager policyConfigManager,
+        IProjectStructureAuditor projectStructureAuditor,
+        IDemoMirrorService demoMirrorService,
+        IPathCanonicalizer pathCanonicalizer)
     {
         _snapshotAccessor = snapshotAccessor;
         _runtimePolicyRefresher = runtimePolicyRefresher;
+        _policyConfigManager = policyConfigManager;
+        _projectStructureAuditor = projectStructureAuditor;
+        _demoMirrorService = demoMirrorService;
+        _pathCanonicalizer = pathCanonicalizer;
 
         InitializeComponent();
         Loaded += ConfigurationEditorWindow_OnLoaded;
@@ -110,6 +123,103 @@ public partial class ConfigurationEditorWindow : System.Windows.Window
     private async void SaveSignReloadButton_OnClick(object sender, System.Windows.RoutedEventArgs e)
     {
         await SaveAsync(sign: true, reload: true);
+    }
+
+    private async void CheckStructureButton_OnClick(object sender, System.Windows.RoutedEventArgs e)
+    {
+        if (!TryGetPolicy(out var policy))
+        {
+            return;
+        }
+
+        if (policy!.Projects.Count == 0)
+        {
+            AppendStatus("No projects found for structure check.");
+            return;
+        }
+
+        var summaryLines = new List<string>();
+        foreach (var project in policy.Projects)
+        {
+            var report = await _projectStructureAuditor.CheckAsync(project, CancellationToken.None);
+            summaryLines.Add(
+                $"{report.ProjectId}: Exists={report.ExistsCount}, Missing={report.MissingCount}, OutsideRoot={report.OutsideRootCount}, AccessDenied={report.AccessDeniedCount}, Invalid={report.InvalidCount}");
+        }
+
+        AppendStatus($"Project structure check complete: {string.Join(" | ", summaryLines)}");
+    }
+
+    private async void BuildDemoMirrorButton_OnClick(object sender, System.Windows.RoutedEventArgs e)
+    {
+        var snapshot = await _policyConfigManager.GetSnapshotAsync(CancellationToken.None);
+        if (snapshot.Policy.Projects.Count == 0)
+        {
+            AppendStatus("No projects found for demo mirror refresh.");
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(snapshot.UserPreferences.DemoMirrorFolderName))
+        {
+            snapshot.UserPreferences.DemoMirrorFolderName = "_FRA_Demo";
+        }
+
+        foreach (var project in snapshot.Policy.Projects)
+        {
+            var projectRoot = DemoModeStateFactory.ResolveProjectRoot(project, _pathCanonicalizer);
+            if (string.IsNullOrWhiteSpace(projectRoot))
+            {
+                continue;
+            }
+
+            var mirrorRoot = _pathCanonicalizer.Canonicalize(
+                Path.Combine(projectRoot, snapshot.UserPreferences.DemoMirrorFolderName));
+            snapshot.UserPreferences.DemoMirrorRootsByProject[project.ProjectId] = mirrorRoot;
+        }
+
+        var state = DemoModeStateFactory.Resolve(snapshot, _pathCanonicalizer) with { Enabled = true };
+        var statusLines = new List<string>();
+        foreach (var project in snapshot.Policy.Projects)
+        {
+            var result = await _demoMirrorService.RefreshAsync(project, state, CancellationToken.None);
+            statusLines.Add(
+                $"{result.ProjectId}: Created={result.CreatedCount}, Existing={result.ExistingCount}, Skipped={result.SkippedCount}, Errors={result.Errors.Count}");
+        }
+
+        snapshot.UserPreferences.LastDemoMirrorRefreshUtc = DateTime.UtcNow;
+        await _policyConfigManager.SaveUserPreferencesAsync(snapshot.UserPreferences, CancellationToken.None);
+        var refreshed = await _runtimePolicyRefresher.RefreshAsync(CancellationToken.None);
+        _snapshotAccessor.Update(refreshed);
+
+        AppendStatus($"Demo mirror refresh complete: {string.Join(" | ", statusLines)}");
+    }
+
+    private async void ToggleDemoModeButton_OnClick(object sender, System.Windows.RoutedEventArgs e)
+    {
+        var snapshot = await _policyConfigManager.GetSnapshotAsync(CancellationToken.None);
+        if (string.IsNullOrWhiteSpace(snapshot.UserPreferences.DemoMirrorFolderName))
+        {
+            snapshot.UserPreferences.DemoMirrorFolderName = "_FRA_Demo";
+        }
+
+        foreach (var project in snapshot.Policy.Projects)
+        {
+            var projectRoot = DemoModeStateFactory.ResolveProjectRoot(project, _pathCanonicalizer);
+            if (string.IsNullOrWhiteSpace(projectRoot))
+            {
+                continue;
+            }
+
+            var mirrorRoot = _pathCanonicalizer.Canonicalize(
+                Path.Combine(projectRoot, snapshot.UserPreferences.DemoMirrorFolderName));
+            snapshot.UserPreferences.DemoMirrorRootsByProject[project.ProjectId] = mirrorRoot;
+        }
+
+        snapshot.UserPreferences.DemoModeEnabled = !snapshot.UserPreferences.DemoModeEnabled;
+        await _policyConfigManager.SaveUserPreferencesAsync(snapshot.UserPreferences, CancellationToken.None);
+        var refreshed = await _runtimePolicyRefresher.RefreshAsync(CancellationToken.None);
+        _snapshotAccessor.Update(refreshed);
+
+        AppendStatus($"Demo mode is now {(snapshot.UserPreferences.DemoModeEnabled ? "ON (Mirror Only)" : "OFF")}.");
     }
 
     private void ApplyProjectWiseProfileButton_OnClick(object sender, System.Windows.RoutedEventArgs e)

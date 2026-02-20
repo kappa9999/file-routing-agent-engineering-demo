@@ -139,6 +139,47 @@ public sealed record RootStateSnapshot(
     DateTime UpdatedAtUtc,
     string? Note = null);
 
+public sealed record DemoModeState(
+    bool Enabled,
+    string MirrorFolderName,
+    IReadOnlyDictionary<string, string> ProjectMirrorRoots,
+    DateTime? LastRefreshedUtc)
+{
+    public static DemoModeState Disabled { get; } = new(
+        false,
+        "_FRA_Demo",
+        new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase),
+        null);
+}
+
+public sealed record ProjectStructurePathResult(
+    string Label,
+    string Path,
+    StructurePathStatus Status,
+    string? Note = null);
+
+public sealed record ProjectStructureReport(
+    string ProjectId,
+    string ProjectRoot,
+    IReadOnlyList<ProjectStructurePathResult> Paths,
+    IReadOnlyList<string> Warnings)
+{
+    public int ExistsCount => Paths.Count(path => path.Status == StructurePathStatus.Exists);
+    public int MissingCount => Paths.Count(path => path.Status == StructurePathStatus.Missing);
+    public int OutsideRootCount => Paths.Count(path => path.Status == StructurePathStatus.OutsideProjectRoot);
+    public int AccessDeniedCount => Paths.Count(path => path.Status == StructurePathStatus.AccessDenied);
+    public int InvalidCount => Paths.Count(path => path.Status == StructurePathStatus.Invalid);
+}
+
+public sealed record DemoMirrorRefreshResult(
+    string ProjectId,
+    string LiveProjectRoot,
+    string MirrorRoot,
+    int CreatedCount,
+    int ExistingCount,
+    int SkippedCount,
+    IReadOnlyDictionary<string, string> Errors);
+
 public sealed record PipelineItem(
     DetectionCandidate Candidate,
     ClassifiedFile ClassifiedFile,

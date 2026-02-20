@@ -68,6 +68,9 @@
       <Button Width="130" Margin="4" Content="Guided Setup..." Click="GuidedSetupButton_OnClick" />
       <Button Width="170" Margin="4" Content="Add Project Template" Click="AddProjectButton_OnClick" />
       <Button Width="220" Margin="4" Content="Apply PW Cmd Profile (Unconfigured)" Click="ApplyProjectWiseProfileButton_OnClick" />
+      <Button Width="170" Margin="4" Content="Check Project Structure" Click="CheckStructureButton_OnClick" />
+      <Button Width="190" Margin="4" Content="Build/Refresh Demo Mirror" Click="BuildDemoMirrorButton_OnClick" />
+      <Button Width="160" Margin="4" Content="Toggle Demo Mode" Click="ToggleDemoModeButton_OnClick" />
       <Button Width="90" Margin="4" Content="Save" Click="SaveButton_OnClick" />
       <Button Width="170" Margin="4" Content="Save + Sign + Reload" Click="SaveSignReloadButton_OnClick" />
       <Button Width="90" Margin="4" Content="Close" Click="CloseButton_OnClick" />

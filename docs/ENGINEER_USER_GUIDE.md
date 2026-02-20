@@ -32,6 +32,21 @@ When you save a PDF/CAD file in a working or wrong folder:
    - `Snooze` if you are not ready yet
 3. The agent routes the file to the official destination.
 
+## Safe Demo Mode (Mirror Only)
+Use this before any presentation on a live project share.
+
+1. In tray menu, click `Run Project Structure Check`.
+2. Click `Build/Refresh Demo Mirror Now`.
+3. Click `Demo Mode: Toggle On/Off` until status shows:
+   - `Status: Demo Mode (Mirror Only)`
+4. Save test files only inside the mirror tree:
+   - `{ProjectRoot}\_FRA_Demo\...`
+
+When Demo Mode is on:
+- Monitoring is restricted to mirror roots.
+- Routing destinations are mirror paths.
+- Live project paths are blocked by safety guard.
+
 ## If A File Already Exists
 You will get a conflict prompt:
 - `Keep Both (Versioned Copy)` (safest)

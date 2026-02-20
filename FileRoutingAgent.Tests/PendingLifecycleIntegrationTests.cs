@@ -82,6 +82,8 @@ public sealed class PendingLifecycleIntegrationTests
             pathCanonicalizer,
             new ConnectorHost(Array.Empty<IExternalSystemConnector>(), NullLogger<ConnectorHost>.Instance),
             new ScanScheduler(),
+            new DemoSnapshotTransformer(),
+            new DemoSafetyGuard(pathCanonicalizer),
             NullLogger<DetectionPipelineHostedService>.Instance);
 
         try

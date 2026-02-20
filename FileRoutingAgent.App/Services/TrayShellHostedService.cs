@@ -1,8 +1,10 @@
 using System.Diagnostics;
 using FileRoutingAgent.App.UI;
 using FileRoutingAgent.Core.Configuration;
+using FileRoutingAgent.Core.Domain;
 using FileRoutingAgent.Core.Interfaces;
 using FileRoutingAgent.Infrastructure.Configuration;
+using FileRoutingAgent.Infrastructure.Pipeline;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -19,6 +21,9 @@ public sealed class TrayShellHostedService(
     IManualDetectionIngress manualDetectionIngress,
     IScanScheduler scanScheduler,
     IRootAvailabilityTracker rootAvailabilityTracker,
+    IProjectStructureAuditor projectStructureAuditor,
+    IDemoMirrorService demoMirrorService,
+    IPathCanonicalizer pathCanonicalizer,
     SupportBundleService supportBundleService,
     IOptions<AgentRuntimeOptions> runtimeOptions,
     ILogger<TrayShellHostedService> logger) : IHostedService
@@ -84,6 +89,22 @@ public sealed class TrayShellHostedService(
             runScanItem.Click += (_, _) => scanScheduler.RequestPriorityScan("manual");
             contextMenu.Items.Add(runScanItem);
 
+            var checkStructureItem = new Forms.ToolStripMenuItem("Run Project Structure Check");
+            checkStructureItem.Click += async (_, _) => await RunProjectStructureCheckAsync();
+            contextMenu.Items.Add(checkStructureItem);
+
+            var refreshDemoMirrorItem = new Forms.ToolStripMenuItem("Build/Refresh Demo Mirror Now");
+            refreshDemoMirrorItem.Click += async (_, _) => await BuildOrRefreshDemoMirrorAsync();
+            contextMenu.Items.Add(refreshDemoMirrorItem);
+
+            var openDemoMirrorItem = new Forms.ToolStripMenuItem("Open Demo Mirror Folder");
+            openDemoMirrorItem.Click += (_, _) => OpenDemoMirrorFolder();
+            contextMenu.Items.Add(openDemoMirrorItem);
+
+            var toggleDemoModeItem = new Forms.ToolStripMenuItem("Demo Mode: Toggle On/Off");
+            toggleDemoModeItem.Click += async (_, _) => await ToggleDemoModeAsync();
+            contextMenu.Items.Add(toggleDemoModeItem);
+
             var diagnosticsItem = new Forms.ToolStripMenuItem("Diagnostics");
             diagnosticsItem.Click += async (_, _) => await ShowDiagnosticsAsync();
             contextMenu.Items.Add(diagnosticsItem);
@@ -143,12 +164,7 @@ public sealed class TrayShellHostedService(
             _notifyIcon.ShowBalloonTip(2500);
 
             var snapshot = snapshotAccessor.Snapshot;
-            if (snapshot?.UserPreferences.MonitoringPaused == true &&
-                (snapshot.UserPreferences.MonitoringPausedUntilUtc is null ||
-                 snapshot.UserPreferences.MonitoringPausedUntilUtc > DateTime.UtcNow))
-            {
-                _statusMenuItem.Text = "Status: Monitoring Paused";
-            }
+            UpdateStatusMenuText(snapshot);
         });
     }
 
@@ -190,9 +206,15 @@ public sealed class TrayShellHostedService(
             var scans = await auditStore.GetRecentScanRunsAsync(200, CancellationToken.None);
             var events = await auditStore.GetRecentAuditEventsAsync(400, CancellationToken.None);
             var rootStates = rootAvailabilityTracker.GetSnapshots();
+            var snapshot = snapshotAccessor.Snapshot;
             await System.Windows.Application.Current.Dispatcher.InvokeAsync(() =>
             {
-                new DiagnosticsWindow(rootStates, scans, events).ShowDialog();
+                new DiagnosticsWindow(
+                    rootStates,
+                    scans,
+                    events,
+                    snapshot?.DemoMode ?? DemoModeState.Disabled,
+                    snapshot?.UserPreferences.LastProjectStructureSummary).ShowDialog();
             });
         }
         catch (Exception exception)
@@ -207,7 +229,13 @@ public sealed class TrayShellHostedService(
         {
             await System.Windows.Application.Current.Dispatcher.InvokeAsync(() =>
             {
-                var window = new ConfigurationEditorWindow(snapshotAccessor, runtimePolicyRefresher);
+                var window = new ConfigurationEditorWindow(
+                    snapshotAccessor,
+                    runtimePolicyRefresher,
+                    policyConfigManager,
+                    projectStructureAuditor,
+                    demoMirrorService,
+                    pathCanonicalizer);
                 window.ShowDialog();
             });
         }
@@ -290,10 +318,7 @@ public sealed class TrayShellHostedService(
 
         await System.Windows.Application.Current.Dispatcher.InvokeAsync(() =>
         {
-            if (_statusMenuItem is not null)
-            {
-                _statusMenuItem.Text = "Status: Monitoring Paused";
-            }
+            UpdateStatusMenuText(snapshot);
         });
     }
 
@@ -311,10 +336,7 @@ public sealed class TrayShellHostedService(
 
         await System.Windows.Application.Current.Dispatcher.InvokeAsync(() =>
         {
-            if (_statusMenuItem is not null)
-            {
-                _statusMenuItem.Text = "Status: Monitoring On";
-            }
+            UpdateStatusMenuText(snapshot);
         });
     }
 
@@ -332,11 +354,266 @@ public sealed class TrayShellHostedService(
 
         await System.Windows.Application.Current.Dispatcher.InvokeAsync(() =>
         {
-            if (_statusMenuItem is not null)
-            {
-                _statusMenuItem.Text = "Status: Monitoring Paused";
-            }
+            UpdateStatusMenuText(snapshot);
         });
+    }
+
+    private async Task RunProjectStructureCheckAsync()
+    {
+        try
+        {
+            var snapshot = await policyConfigManager.GetSnapshotAsync(CancellationToken.None);
+            if (snapshot.Policy.Projects.Count == 0)
+            {
+                await System.Windows.Application.Current.Dispatcher.InvokeAsync(() =>
+                {
+                    System.Windows.MessageBox.Show(
+                        "No projects are configured yet.",
+                        "Project Structure Check",
+                        System.Windows.MessageBoxButton.OK,
+                        System.Windows.MessageBoxImage.Information);
+                });
+                return;
+            }
+
+            var reportLines = new List<string>();
+            foreach (var project in snapshot.Policy.Projects)
+            {
+                var report = await projectStructureAuditor.CheckAsync(project, CancellationToken.None);
+                reportLines.Add(
+                    $"{report.ProjectId}: Exists={report.ExistsCount}, Missing={report.MissingCount}, OutsideRoot={report.OutsideRootCount}, AccessDenied={report.AccessDeniedCount}, Invalid={report.InvalidCount}");
+            }
+
+            snapshot.UserPreferences.LastProjectStructureSummary = string.Join(" | ", reportLines);
+            await policyConfigManager.SaveUserPreferencesAsync(snapshot.UserPreferences, CancellationToken.None);
+
+            await auditStore.WriteEventAsync(
+                new Core.Domain.AuditEvent(
+                    DateTime.UtcNow,
+                    "project_structure_checked",
+                    PayloadJson: Core.Domain.JsonPayload.Serialize(new
+                    {
+                        projectCount = snapshot.Policy.Projects.Count,
+                        summary = snapshot.UserPreferences.LastProjectStructureSummary
+                    })),
+                CancellationToken.None);
+
+            await System.Windows.Application.Current.Dispatcher.InvokeAsync(() =>
+            {
+                System.Windows.MessageBox.Show(
+                    $"Project structure check complete.\n\n{snapshot.UserPreferences.LastProjectStructureSummary}",
+                    "Project Structure Check",
+                    System.Windows.MessageBoxButton.OK,
+                    System.Windows.MessageBoxImage.Information);
+            });
+        }
+        catch (Exception exception)
+        {
+            logger.LogWarning(exception, "Project structure check failed.");
+            await System.Windows.Application.Current.Dispatcher.InvokeAsync(() =>
+            {
+                System.Windows.MessageBox.Show(
+                    $"Project structure check failed.\n\n{exception.Message}",
+                    "Project Structure Check",
+                    System.Windows.MessageBoxButton.OK,
+                    System.Windows.MessageBoxImage.Error);
+            });
+        }
+    }
+
+    private async Task BuildOrRefreshDemoMirrorAsync()
+    {
+        try
+        {
+            var snapshot = await policyConfigManager.GetSnapshotAsync(CancellationToken.None);
+            if (snapshot.Policy.Projects.Count == 0)
+            {
+                return;
+            }
+
+            if (string.IsNullOrWhiteSpace(snapshot.UserPreferences.DemoMirrorFolderName))
+            {
+                snapshot.UserPreferences.DemoMirrorFolderName = "_FRA_Demo";
+            }
+
+            foreach (var project in snapshot.Policy.Projects)
+            {
+                var projectRoot = DemoModeStateFactory.ResolveProjectRoot(project, pathCanonicalizer);
+                if (string.IsNullOrWhiteSpace(projectRoot))
+                {
+                    continue;
+                }
+
+                var mirrorRoot = pathCanonicalizer.Canonicalize(
+                    Path.Combine(projectRoot, snapshot.UserPreferences.DemoMirrorFolderName));
+                snapshot.UserPreferences.DemoMirrorRootsByProject[project.ProjectId] = mirrorRoot;
+            }
+
+            var demoState = DemoModeStateFactory.Resolve(snapshot, pathCanonicalizer) with { Enabled = true };
+
+            var summaries = new List<string>();
+            foreach (var project in snapshot.Policy.Projects)
+            {
+                var result = await demoMirrorService.RefreshAsync(project, demoState, CancellationToken.None);
+                summaries.Add(
+                    $"{result.ProjectId}: Created={result.CreatedCount}, Existing={result.ExistingCount}, Skipped={result.SkippedCount}, Errors={result.Errors.Count}");
+
+                await auditStore.WriteEventAsync(
+                    new Core.Domain.AuditEvent(
+                        DateTime.UtcNow,
+                        "demo_mirror_refreshed",
+                        ProjectId: result.ProjectId,
+                        PayloadJson: Core.Domain.JsonPayload.Serialize(new
+                        {
+                            result.LiveProjectRoot,
+                            result.MirrorRoot,
+                            result.CreatedCount,
+                            result.ExistingCount,
+                            result.SkippedCount,
+                            errorCount = result.Errors.Count
+                        })),
+                    CancellationToken.None);
+            }
+
+            snapshot.UserPreferences.LastDemoMirrorRefreshUtc = DateTime.UtcNow;
+            await policyConfigManager.SaveUserPreferencesAsync(snapshot.UserPreferences, CancellationToken.None);
+
+            var refreshed = await runtimePolicyRefresher.RefreshAsync(CancellationToken.None);
+            snapshotAccessor.Update(refreshed);
+            UpdateStatusMenuText(refreshed);
+
+            await System.Windows.Application.Current.Dispatcher.InvokeAsync(() =>
+            {
+                System.Windows.MessageBox.Show(
+                    $"Demo mirror refresh complete.\n\n{string.Join("\n", summaries)}",
+                    "Demo Mirror",
+                    System.Windows.MessageBoxButton.OK,
+                    System.Windows.MessageBoxImage.Information);
+            });
+        }
+        catch (Exception exception)
+        {
+            logger.LogWarning(exception, "Demo mirror refresh failed.");
+            await System.Windows.Application.Current.Dispatcher.InvokeAsync(() =>
+            {
+                System.Windows.MessageBox.Show(
+                    $"Demo mirror refresh failed.\n\n{exception.Message}",
+                    "Demo Mirror",
+                    System.Windows.MessageBoxButton.OK,
+                    System.Windows.MessageBoxImage.Error);
+            });
+        }
+    }
+
+    private async Task ToggleDemoModeAsync()
+    {
+        try
+        {
+            var snapshot = await policyConfigManager.GetSnapshotAsync(CancellationToken.None);
+            if (snapshot.Policy.Projects.Count == 0)
+            {
+                return;
+            }
+
+            if (string.IsNullOrWhiteSpace(snapshot.UserPreferences.DemoMirrorFolderName))
+            {
+                snapshot.UserPreferences.DemoMirrorFolderName = "_FRA_Demo";
+            }
+
+            foreach (var project in snapshot.Policy.Projects)
+            {
+                var projectRoot = DemoModeStateFactory.ResolveProjectRoot(project, pathCanonicalizer);
+                if (string.IsNullOrWhiteSpace(projectRoot))
+                {
+                    continue;
+                }
+
+                var mirrorRoot = pathCanonicalizer.Canonicalize(
+                    Path.Combine(projectRoot, snapshot.UserPreferences.DemoMirrorFolderName));
+                snapshot.UserPreferences.DemoMirrorRootsByProject[project.ProjectId] = mirrorRoot;
+            }
+
+            snapshot.UserPreferences.DemoModeEnabled = !snapshot.UserPreferences.DemoModeEnabled;
+            await policyConfigManager.SaveUserPreferencesAsync(snapshot.UserPreferences, CancellationToken.None);
+
+            await auditStore.WriteEventAsync(
+                new Core.Domain.AuditEvent(
+                    DateTime.UtcNow,
+                    "demo_mode_toggled",
+                    PayloadJson: Core.Domain.JsonPayload.Serialize(new
+                    {
+                        enabled = snapshot.UserPreferences.DemoModeEnabled
+                    })),
+                CancellationToken.None);
+
+            var refreshed = await runtimePolicyRefresher.RefreshAsync(CancellationToken.None);
+            snapshotAccessor.Update(refreshed);
+            UpdateStatusMenuText(refreshed);
+        }
+        catch (Exception exception)
+        {
+            logger.LogWarning(exception, "Failed to toggle demo mode.");
+        }
+    }
+
+    private void OpenDemoMirrorFolder()
+    {
+        var snapshot = snapshotAccessor.Snapshot;
+        if (snapshot is null)
+        {
+            return;
+        }
+
+        var path = snapshot.DemoMode.ProjectMirrorRoots.Values.FirstOrDefault();
+        if (string.IsNullOrWhiteSpace(path))
+        {
+            if (snapshot.Policy.Projects.Count == 0)
+            {
+                return;
+            }
+
+            var projectRoot = DemoModeStateFactory.ResolveProjectRoot(snapshot.Policy.Projects[0], pathCanonicalizer);
+            if (string.IsNullOrWhiteSpace(projectRoot))
+            {
+                return;
+            }
+
+            var folderName = string.IsNullOrWhiteSpace(snapshot.UserPreferences.DemoMirrorFolderName)
+                ? "_FRA_Demo"
+                : snapshot.UserPreferences.DemoMirrorFolderName;
+            path = Path.Combine(projectRoot, folderName);
+        }
+
+        OpenPath(path);
+    }
+
+    private void UpdateStatusMenuText(RuntimeConfigSnapshot? snapshot)
+    {
+        if (_statusMenuItem is null)
+        {
+            return;
+        }
+
+        if (snapshot is null)
+        {
+            _statusMenuItem.Text = "Status: Unknown";
+            return;
+        }
+
+        var paused = snapshot.UserPreferences.MonitoringPaused &&
+                     (snapshot.UserPreferences.MonitoringPausedUntilUtc is null ||
+                      snapshot.UserPreferences.MonitoringPausedUntilUtc > DateTime.UtcNow);
+        if (paused)
+        {
+            _statusMenuItem.Text = snapshot.DemoMode.Enabled
+                ? "Status: Monitoring Paused (Demo Mode)"
+                : "Status: Monitoring Paused";
+            return;
+        }
+
+        _statusMenuItem.Text = snapshot.DemoMode.Enabled
+            ? "Status: Demo Mode (Mirror Only)"
+            : "Status: Monitoring On";
     }
 
     private static void OpenPath(string path)
@@ -451,7 +728,10 @@ public sealed class TrayShellHostedService(
             EasySetupInput? input = null;
             await System.Windows.Application.Current.Dispatcher.InvokeAsync(() =>
             {
-                var window = new EasySetupWizardWindow();
+                var window = new EasySetupWizardWindow(
+                    projectStructureAuditor,
+                    demoMirrorService,
+                    pathCanonicalizer);
                 if (window.ShowDialog() == true)
                 {
                     input = window.Result;
@@ -483,7 +763,8 @@ public sealed class TrayShellHostedService(
                         input.CleanSetsPath,
                         input.IncludeLocalWrongSaveFolders,
                         input.CreateStandardFolders,
-                        input.EnableProjectWiseCommandProfile
+                        input.EnableProjectWiseCommandProfile,
+                        input.EnableDemoMode
                     })),
                 CancellationToken.None);
 
@@ -501,8 +782,21 @@ public sealed class TrayShellHostedService(
             var signature = PolicyEditorUtility.ComputeSha256Hex(policyPath);
             await File.WriteAllTextAsync(signaturePath, signature, CancellationToken.None);
 
+            var preferences = snapshot.UserPreferences;
+            if (string.IsNullOrWhiteSpace(preferences.DemoMirrorFolderName))
+            {
+                preferences.DemoMirrorFolderName = "_FRA_Demo";
+            }
+
+            var demoMirrorRoot = pathCanonicalizer.Canonicalize(
+                Path.Combine(input.ProjectRoot, preferences.DemoMirrorFolderName));
+            preferences.DemoMirrorRootsByProject[input.ProjectId] = demoMirrorRoot;
+            preferences.DemoModeEnabled = input.EnableDemoMode;
+            await policyConfigManager.SaveUserPreferencesAsync(preferences, CancellationToken.None);
+
             var refreshed = await runtimePolicyRefresher.RefreshAsync(CancellationToken.None);
             snapshotAccessor.Update(refreshed);
+            UpdateStatusMenuText(refreshed);
 
             await auditStore.WriteEventAsync(
                 new Core.Domain.AuditEvent(
@@ -523,6 +817,8 @@ public sealed class TrayShellHostedService(
                         input.CleanSetsPath,
                         input.IncludeLocalWrongSaveFolders,
                         input.EnableProjectWiseCommandProfile,
+                        input.EnableDemoMode,
+                        demoMirrorRoot,
                         foldersCreated = folderEnsureResult?.Created.Count ?? 0,
                         foldersExisting = folderEnsureResult?.Existing.Count ?? 0,
                         folderCreateErrors = folderEnsureResult?.Failed
