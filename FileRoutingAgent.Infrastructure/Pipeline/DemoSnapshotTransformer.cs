@@ -41,6 +41,7 @@ public sealed class DemoSnapshotTransformer : IDemoSnapshotTransformer
                 continue;
             }
 
+            mirrorRoot = canonicalizer.Canonicalize(mirrorRoot);
             var liveRoot = DemoModeStateFactory.ResolveProjectRoot(project, canonicalizer);
             if (string.IsNullOrWhiteSpace(liveRoot))
             {
@@ -48,20 +49,46 @@ public sealed class DemoSnapshotTransformer : IDemoSnapshotTransformer
             }
 
             project.PathMatchers = project.PathMatchers
-                .Select(path => MapPath(path, liveRoot, mirrorRoot, canonicalizer))
+                .Select(path => TryMapPath(path, liveRoot, mirrorRoot, canonicalizer, out var mapped) ? mapped : string.Empty)
+                .Where(path => !string.IsNullOrWhiteSpace(path))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
                 .ToList();
+            if (project.PathMatchers.Count == 0)
+            {
+                project.PathMatchers = [mirrorRoot];
+            }
 
             project.WorkingRoots = project.WorkingRoots
-                .Select(path => MapPath(path, liveRoot, mirrorRoot, canonicalizer))
+                .Select(path => TryMapPath(path, liveRoot, mirrorRoot, canonicalizer, out var mapped) ? mapped : string.Empty)
+                .Where(path => !string.IsNullOrWhiteSpace(path))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
                 .ToList();
 
-            project.OfficialDestinations.CadPublish = MapPath(project.OfficialDestinations.CadPublish, liveRoot, mirrorRoot, canonicalizer);
-            project.OfficialDestinations.PlotSets = MapPath(project.OfficialDestinations.PlotSets, liveRoot, mirrorRoot, canonicalizer);
+            project.OfficialDestinations.CadPublish = TryMapPath(
+                project.OfficialDestinations.CadPublish,
+                liveRoot,
+                mirrorRoot,
+                canonicalizer,
+                out var mappedCadPublish)
+                ? mappedCadPublish
+                : string.Empty;
+            project.OfficialDestinations.PlotSets = TryMapPath(
+                project.OfficialDestinations.PlotSets,
+                liveRoot,
+                mirrorRoot,
+                canonicalizer,
+                out var mappedPlotSets)
+                ? mappedPlotSets
+                : string.Empty;
 
             var remappedPdfCategories = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
             foreach (var (category, destination) in project.OfficialDestinations.PdfCategories)
             {
-                remappedPdfCategories[category] = MapPath(destination, liveRoot, mirrorRoot, canonicalizer);
+                if (TryMapPath(destination, liveRoot, mirrorRoot, canonicalizer, out var mappedDestination) &&
+                    !string.IsNullOrWhiteSpace(mappedDestination))
+                {
+                    remappedPdfCategories[category] = mappedDestination;
+                }
             }
             project.OfficialDestinations.PdfCategories = remappedPdfCategories;
         }
@@ -89,15 +116,17 @@ public sealed class DemoSnapshotTransformer : IDemoSnapshotTransformer
         };
     }
 
-    private static string MapPath(
+    private static bool TryMapPath(
         string path,
         string liveRoot,
         string mirrorRoot,
-        IPathCanonicalizer canonicalizer)
+        IPathCanonicalizer canonicalizer,
+        out string mappedPath)
     {
+        mappedPath = string.Empty;
         if (string.IsNullOrWhiteSpace(path))
         {
-            return path;
+            return false;
         }
 
         var canonicalPath = canonicalizer.Canonicalize(path);
@@ -106,16 +135,17 @@ public sealed class DemoSnapshotTransformer : IDemoSnapshotTransformer
 
         if (!canonicalizer.PathStartsWith(canonicalPath, canonicalLiveRoot))
         {
-            return canonicalPath;
+            return false;
         }
 
         var relativePath = canonicalPath.Length == canonicalLiveRoot.Length
             ? string.Empty
             : canonicalPath[canonicalLiveRoot.Length..].TrimStart('\\');
 
-        return string.IsNullOrWhiteSpace(relativePath)
+        mappedPath = string.IsNullOrWhiteSpace(relativePath)
             ? canonicalMirrorRoot
             : canonicalizer.Canonicalize(Path.Combine(canonicalMirrorRoot, relativePath));
+        return true;
     }
 
     private static FirmPolicy ClonePolicy(FirmPolicy policy)

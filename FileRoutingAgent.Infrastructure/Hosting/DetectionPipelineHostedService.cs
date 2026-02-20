@@ -98,6 +98,7 @@ public sealed class DetectionPipelineHostedService(
         var demoState = DemoModeStateFactory.Resolve(baseSnapshot, pathCanonicalizer);
         var effectiveSnapshot = demoSnapshotTransformer.ApplyDemoOverlay(baseSnapshot, demoState, pathCanonicalizer);
         snapshotAccessor.Update(effectiveSnapshot);
+        await ReconcilePendingForDemoScopeAsync(effectiveSnapshot, cancellationToken);
         await auditStore.WriteEventAsync(
             new AuditEvent(
                 DateTime.UtcNow,
@@ -119,6 +120,49 @@ public sealed class DetectionPipelineHostedService(
         }
 
         return effectiveSnapshot;
+    }
+
+    private async Task ReconcilePendingForDemoScopeAsync(RuntimeConfigSnapshot snapshot, CancellationToken cancellationToken)
+    {
+        if (!snapshot.DemoMode.Enabled)
+        {
+            return;
+        }
+
+        var pendingItems = await auditStore.GetPendingItemsAsync(cancellationToken);
+        if (pendingItems.Count == 0)
+        {
+            return;
+        }
+
+        var dismissedCount = 0;
+        foreach (var item in pendingItems)
+        {
+            if (demoSafetyGuard.IsPathInMirrorScope(item.SourcePath, snapshot.DemoMode, pathCanonicalizer))
+            {
+                continue;
+            }
+
+            await auditStore.UpdatePendingStatusAsync(
+                item.Id,
+                PendingStatus.Dismissed,
+                "Dismissed automatically: outside demo mirror scope.",
+                cancellationToken);
+            dismissedCount++;
+        }
+
+        if (dismissedCount > 0)
+        {
+            await auditStore.WriteEventAsync(
+                new AuditEvent(
+                    DateTime.UtcNow,
+                    "demo_pending_scope_reconciled",
+                    PayloadJson: JsonPayload.Serialize(new
+                    {
+                        dismissedCount
+                    })),
+                cancellationToken);
+        }
     }
 
     public async Task<bool> EnqueueAsync(DetectionCandidate candidate, CancellationToken cancellationToken)

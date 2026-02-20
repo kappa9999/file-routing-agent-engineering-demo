@@ -44,7 +44,54 @@ public sealed class DemoModeServicesTests
             Assert.All(project.WorkingRoots, root => Assert.StartsWith(canonicalizer.Canonicalize(mirrorRoot), canonicalizer.Canonicalize(root), StringComparison.OrdinalIgnoreCase));
             Assert.StartsWith(canonicalizer.Canonicalize(mirrorRoot), canonicalizer.Canonicalize(project.OfficialDestinations.CadPublish), StringComparison.OrdinalIgnoreCase);
         });
+        Assert.All(transformed.Policy.Monitoring.CandidateRoots, root => Assert.StartsWith(canonicalizer.Canonicalize(mirrorRoot), canonicalizer.Canonicalize(root), StringComparison.OrdinalIgnoreCase));
         Assert.All(transformed.Policy.Monitoring.WatchRoots, root => Assert.StartsWith(canonicalizer.Canonicalize(mirrorRoot), canonicalizer.Canonicalize(root), StringComparison.OrdinalIgnoreCase));
+    }
+
+    [Fact]
+    public void DemoSnapshotTransformer_ExcludesPathsOutsideProjectRoot()
+    {
+        var projectRoot = Path.Combine(Path.GetTempPath(), "FraDemoOutsideScopeTests", Guid.NewGuid().ToString("N"), "Project123");
+        var mirrorRoot = Path.Combine(projectRoot, "_FRA_Demo");
+        var externalRoot = Path.Combine(Path.GetTempPath(), "FraDemoOutsideScopeTests", Guid.NewGuid().ToString("N"), "External");
+
+        var policy = BuildPolicy(projectRoot);
+        policy.Projects[0].WorkingRoots.Add(Path.Combine(externalRoot, "70_Design", "_Working"));
+        policy.Projects[0].OfficialDestinations.PdfCategories["check_print"] = Path.Combine(externalRoot, "70_Design", "30_CheckPrints");
+
+        var preferences = new UserPreferences
+        {
+            DemoModeEnabled = true,
+            DemoMirrorFolderName = "_FRA_Demo",
+            DemoMirrorRootsByProject = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+            {
+                ["Project123"] = mirrorRoot
+            }
+        };
+
+        var snapshot = new RuntimeConfigSnapshot
+        {
+            PolicyPath = "policy.json",
+            UserPreferencesPath = "prefs.json",
+            Policy = policy,
+            UserPreferences = preferences,
+            SafeModeEnabled = false
+        };
+
+        var canonicalizer = new PathCanonicalizer();
+        var state = DemoModeStateFactory.Resolve(snapshot, canonicalizer);
+        var transformer = new DemoSnapshotTransformer();
+        var transformed = transformer.ApplyDemoOverlay(snapshot, state, canonicalizer);
+
+        Assert.DoesNotContain(
+            transformed.Policy.Projects[0].WorkingRoots,
+            root => canonicalizer.PathStartsWith(root, externalRoot));
+        Assert.DoesNotContain(
+            transformed.Policy.Projects[0].OfficialDestinations.PdfCategories.Values,
+            path => canonicalizer.PathStartsWith(path, externalRoot));
+        Assert.DoesNotContain(
+            transformed.Policy.Monitoring.CandidateRoots,
+            root => canonicalizer.PathStartsWith(root, externalRoot));
     }
 
     [Fact]

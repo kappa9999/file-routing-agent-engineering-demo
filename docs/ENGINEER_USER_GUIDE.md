@@ -46,6 +46,7 @@ When Demo Mode is on:
 - Monitoring is restricted to mirror roots.
 - Routing destinations are mirror paths.
 - Live project paths are blocked by safety guard.
+- Pending detections are mirror-scoped; live-path pending items are automatically dismissed on policy refresh.
 
 ## If A File Already Exists
 You will get a conflict prompt:

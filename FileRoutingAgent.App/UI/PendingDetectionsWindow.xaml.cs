@@ -2,6 +2,7 @@ using System.Diagnostics;
 using System.IO;
 using FileRoutingAgent.Core.Domain;
 using FileRoutingAgent.Core.Interfaces;
+using FileRoutingAgent.Infrastructure.Configuration;
 
 namespace FileRoutingAgent.App.UI;
 
@@ -9,13 +10,22 @@ public partial class PendingDetectionsWindow : System.Windows.Window
 {
     private readonly IAuditStore _auditStore;
     private readonly IManualDetectionIngress _manualDetectionIngress;
+    private readonly RuntimeConfigSnapshotAccessor _snapshotAccessor;
+    private readonly IPathCanonicalizer _pathCanonicalizer;
+    private readonly IDemoSafetyGuard _demoSafetyGuard;
 
     public PendingDetectionsWindow(
         IAuditStore auditStore,
-        IManualDetectionIngress manualDetectionIngress)
+        IManualDetectionIngress manualDetectionIngress,
+        RuntimeConfigSnapshotAccessor snapshotAccessor,
+        IPathCanonicalizer pathCanonicalizer,
+        IDemoSafetyGuard demoSafetyGuard)
     {
         _auditStore = auditStore;
         _manualDetectionIngress = manualDetectionIngress;
+        _snapshotAccessor = snapshotAccessor;
+        _pathCanonicalizer = pathCanonicalizer;
+        _demoSafetyGuard = demoSafetyGuard;
         InitializeComponent();
         Loaded += async (_, _) => await RefreshAsync();
     }
@@ -23,9 +33,25 @@ public partial class PendingDetectionsWindow : System.Windows.Window
     private async Task RefreshAsync()
     {
         var pendingItems = await _auditStore.GetPendingItemsAsync(CancellationToken.None);
+        var snapshot = _snapshotAccessor.Snapshot;
+        var demoState = snapshot?.DemoMode ?? DemoModeState.Disabled;
+
+        var hiddenCount = 0;
+        if (demoState.Enabled)
+        {
+            var filtered = pendingItems
+                .Where(item => _demoSafetyGuard.IsPathInMirrorScope(item.SourcePath, demoState, _pathCanonicalizer))
+                .ToList();
+
+            hiddenCount = pendingItems.Count - filtered.Count;
+            pendingItems = filtered;
+        }
+
         SummaryText.Text = pendingItems.Count == 0
             ? "No pending detections."
-            : $"Pending detections: {pendingItems.Count} (multi-select supported)";
+            : demoState.Enabled
+                ? $"Pending detections (mirror scope): {pendingItems.Count} (hidden outside mirror: {hiddenCount})"
+                : $"Pending detections: {pendingItems.Count} (multi-select supported)";
 
         PendingGrid.ItemsSource = pendingItems
             .OrderByDescending(item => item.DetectedAtUtc)

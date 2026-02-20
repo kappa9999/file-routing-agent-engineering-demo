@@ -23,6 +23,7 @@ public sealed class TrayShellHostedService(
     IRootAvailabilityTracker rootAvailabilityTracker,
     IProjectStructureAuditor projectStructureAuditor,
     IDemoMirrorService demoMirrorService,
+    IDemoSafetyGuard demoSafetyGuard,
     IPathCanonicalizer pathCanonicalizer,
     SupportBundleService supportBundleService,
     IOptions<AgentRuntimeOptions> runtimeOptions,
@@ -174,7 +175,12 @@ public sealed class TrayShellHostedService(
         {
             await System.Windows.Application.Current.Dispatcher.InvokeAsync(() =>
             {
-                new PendingDetectionsWindow(auditStore, manualDetectionIngress).ShowDialog();
+                new PendingDetectionsWindow(
+                    auditStore,
+                    manualDetectionIngress,
+                    snapshotAccessor,
+                    pathCanonicalizer,
+                    demoSafetyGuard).ShowDialog();
             });
         }
         catch (Exception exception)
