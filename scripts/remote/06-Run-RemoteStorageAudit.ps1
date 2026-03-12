@@ -25,12 +25,18 @@ function Resolve-BundleZip {
     }
 
     $repoRoot = Resolve-Path (Join-Path $PSScriptRoot "..\..")
-    $defaultZip = Join-Path $repoRoot "artifacts\StorageAuditBundle-win-x64.zip"
-    if (-not (Test-Path -LiteralPath $defaultZip)) {
-        throw "Bundle zip not found at '$defaultZip'. Run scripts\Build-StorageAuditBundle.ps1 first or pass -LocalBundleZip."
+    $candidatePaths = @(
+        (Join-Path $repoRoot "artifacts\StorageAuditTool-win-x64.zip"),
+        (Join-Path $repoRoot "artifacts\StorageAuditBundle-win-x64.zip")
+    )
+
+    foreach ($candidate in $candidatePaths) {
+        if (Test-Path -LiteralPath $candidate) {
+            return (Resolve-Path -LiteralPath $candidate).Path
+        }
     }
 
-    return (Resolve-Path -LiteralPath $defaultZip).Path
+    throw "Bundle zip not found in artifacts. Run scripts\Build-StorageAuditBundle.ps1 first or pass -LocalBundleZip."
 }
 
 function Add-TrustedHostIfNeeded {
@@ -73,7 +79,7 @@ Write-Step "Opening remote session..."
 $session = New-PSSession -ComputerName $ComputerName -Credential $credential
 
 try {
-    $remoteZip = Join-Path $RemoteWorkingFolder "StorageAuditBundle-win-x64.zip"
+    $remoteZip = Join-Path $RemoteWorkingFolder "StorageAuditTool-win-x64.zip"
     $remoteExtracted = Join-Path $RemoteWorkingFolder "bundle"
 
     Invoke-Command -Session $session -ScriptBlock {

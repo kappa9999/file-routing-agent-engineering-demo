@@ -31,7 +31,7 @@ Key capabilities:
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\Build-DemoBundle.ps1
 ```
-2. Extract `artifacts\FileRoutingAgentDemoBundle-win-x64.zip`.
+2. Extract `artifacts\FileRoutingAgentDemo-win-x64.zip`.
 3. Double-click `Install-FileRoutingAgentDemo.cmd`.
 4. Launch the app and run `Easy Setup Wizard (Recommended)`.
 
@@ -45,13 +45,23 @@ Main documentation:
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\Build-StorageAuditBundle.ps1
 ```
-2. Extract `artifacts\StorageAuditBundle-win-x64.zip`.
+2. Extract `artifacts\StorageAuditTool-win-x64.zip`.
 3. On the office machine, while signed into the normal user session where `P:\` is mapped, double-click `Run-StorageAudit.cmd`.
 4. Open the generated `storage-audit-report.xlsx` under:
    `%USERPROFILE%\Documents\FileStorageAudit\Audit_<timestamp>`
 
 Main documentation:
 - `docs/STORAGE_AUDIT_GUIDE.md`
+
+## Releases
+GitHub releases should be published as two separate assets, even when they come from the same commit:
+
+- `FileRoutingAgentDemo-win-x64.zip`
+- `StorageAuditTool-win-x64.zip`
+
+Release notes live in:
+- `docs/releases/FILE_ROUTING_AGENT_DEMO_v0.4.0.md`
+- `docs/releases/STORAGE_AUDIT_TOOL_v0.1.0.md`
 
 ## Remote Workflow
 The repo includes PowerShell remoting helpers for two-machine workflows.

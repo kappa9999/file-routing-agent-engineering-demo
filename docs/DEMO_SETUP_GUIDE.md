@@ -17,7 +17,7 @@ dotnet test FileRoutingAgent.slnx --no-build
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\Build-DemoBundle.ps1
 ```
-3. Move `artifacts\FileRoutingAgentDemoBundle-win-x64.zip` to the live machine.
+3. Move `artifacts\FileRoutingAgentDemo-win-x64.zip` to the live machine.
 4. On the live machine, extract zip and double-click `Install-FileRoutingAgentDemo.cmd`.
 5. Install sample connector script (source-build path only):
 ```powershell

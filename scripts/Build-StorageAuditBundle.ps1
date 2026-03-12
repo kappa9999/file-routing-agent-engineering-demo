@@ -18,8 +18,8 @@ if ([string]::IsNullOrWhiteSpace($OutputRoot)) {
 }
 
 $publishDir = Join-Path $OutputRoot "storage-audit-publish-$Runtime"
-$bundleDir = Join-Path $OutputRoot "StorageAuditBundle-$Runtime"
-$zipPath = Join-Path $OutputRoot "StorageAuditBundle-$Runtime.zip"
+$bundleDir = Join-Path $OutputRoot "StorageAuditTool-$Runtime"
+$zipPath = Join-Path $OutputRoot "StorageAuditTool-$Runtime.zip"
 
 Write-Step "Repo root: $repoRoot"
 Write-Step "Output root: $OutputRoot"
