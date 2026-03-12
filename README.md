@@ -1,199 +1,126 @@
-# File Routing Agent For Engineering Teams
+# Engineering File Workflow Tools
 
-Windows tray-hosted file routing automation for structural/civil engineering outputs.  
-Built for Windows 11 teams using shared SMB project folders and Bentley CAD workflows.
+Windows tools for structural and civil engineering teams working on shared SMB project folders, Bentley CAD workflows, and live project-review environments.
 
-## Non-Technical User Friendly
-- No command line usage is required for normal setup or daily use.
-- The tray app now includes an **Easy Setup Wizard** with simple form fields:
-  - Project ID
-  - Project Name
-  - Project Root Folder
-  - Review/Edit all key folders before applying (watch root, working folders, official destinations)
-  - Optional checkboxes for recommended defaults
-- The tray app also includes **Export Support Bundle**:
-  - Creates one zip on Desktop with policy, preferences, audit DB, scan history, and app logs.
-  - Share that zip for troubleshooting instead of manually describing issues.
-- The wizard automatically configures:
-  - Working roots
-  - Official CAD/PDF destinations
-  - Candidate and watch roots
-  - Policy signature refresh
-  - Live policy reload (no restart required)
+This repository currently ships two separate utilities:
 
-## Why This Exists
-- Engineers save CAD and PDF outputs into working folders, Desktop, Downloads, or temporary locations.
-- Teams lose time confirming which print set or drawing is the latest.
-- This agent detects those mis-saves, prompts users once at the right time, and routes files to official project destinations.
+## Included Tools
+### 1. File Routing Agent
+A Windows tray application that helps engineers route CAD and PDF outputs into the correct project locations.
 
-## What The Agent Does
-- Watches configured roots for risky saves (`FileSystemWatcher` hint source).
-- Reconciles with periodic scans (scanner is truth source for SMB reliability).
-- Waits for file stability before prompting (min-age + quiet checks + lock-safe open).
-- Prompts with simple actions: `Move`, `Copy`, `Publish Copy`, `Leave`, `Snooze`.
-- Never silently overwrites destination files.
-- Writes full audit trail to SQLite (`state.db`).
+Key capabilities:
+- detects risky saves in working folders or other non-official locations,
+- prompts with simple actions such as `Move`, `Copy`, `Publish Copy`, `Leave`, and `Snooze`,
+- prevents silent overwrites,
+- keeps an audit trail in SQLite,
+- supports a safe `_FRA_Demo` mirror mode for presentations on live project shares.
 
-## MVP Feature Highlights
-- PDF routing by configured output categories (`progress_print`, `exhibit`, `check_print`, `clean_set`).
-- CAD publish workflow with `Publish Copy` default.
-- Conflict handling with versioned keep-both flow.
-- Agent-origin suppression to avoid self-trigger loops.
-- Pending queue that survives restart.
-- Policy integrity check (`firm-policy.json` + signature hash).
-- Connector adapter boundary for future ProjectWise integration.
-- Safe Demo Mirror Mode (`_FRA_Demo`) to isolate presentation/testing from live project folders.
+### 2. Storage Audit Tool
+A separate, read-only utility for scanning `P:\` or a UNC share and generating Excel/CSV/JSON reports for storage cleanup review.
 
-## Architecture At A Glance
-- `FileRoutingAgent.App`: WPF tray UX, prompts, diagnostics, config editor.
-- `FileRoutingAgent.Core`: domain contracts, config models, interfaces.
-- `FileRoutingAgent.Infrastructure`: pipeline, watcher/scanner, routing, conflict, transfer, persistence.
-- `FileRoutingAgent.Tests`: unit and integration tests for pipeline invariants.
+Key capabilities:
+- ranks the largest files by size,
+- highlights older large-file review candidates,
+- summarizes storage by project bucket and file extension,
+- writes all output locally on the workstation,
+- never deletes, archives, or modifies the scanned share.
 
-## Repository Layout
-- `FileRoutingAgent.App/Config/firm-policy.json`: admin policy file.
-- `FileRoutingAgent.App/Config/firm-policy.json.sig`: integrity signature (SHA256 hash).
-- `scripts/LocalSmokeTest.ps1`: local end-to-end routing smoke test.
-- `scripts/ProjectWisePublish.ps1`: sample connector script for `projectwise_script` profile.
-- `scripts/Install-ProjectWiseConnectorSample.ps1`: installs sample connector into `%ProgramData%`.
-
-## Quick Start (Demo Machine)
-### Recommended (No Terminal)
-1. Download the demo bundle zip from GitHub releases.
-2. Extract the zip.
-3. Double-click `Install-FileRoutingAgentDemo.cmd`.
-4. Launch the app from desktop or Start Menu shortcut.
-5. Run `Easy Setup Wizard (Recommended)` from tray menu.
-6. In the wizard, verify/edit each folder path before clicking `Apply Setup`.
-7. For live-project demos, run:
-   - `Run Project Structure Check`
-   - `Build/Refresh Demo Mirror Now`
-   - `Demo Mode: Toggle On/Off` until status shows `Demo Mode (Mirror Only)`.
-
-### Developer / Build Path
-1. Build and test:
-```powershell
-dotnet build FileRoutingAgent.slnx
-dotnet test FileRoutingAgent.slnx --no-build
-```
-2. Run local smoke test (no production `P:\` required):
-```powershell
-powershell -ExecutionPolicy Bypass -File .\scripts\LocalSmokeTest.ps1
-```
-3. Start the tray app:
-```powershell
-dotnet run --project FileRoutingAgent.App
-```
-4. Use tray menu:
-- `Review Pending Detections`
-- `Run Reconciliation Scan Now`
-- `Open Configuration`
-- `Diagnostics`
-- `Export Support Bundle`
-
-### Build One-Click Demo Bundle
+## Quick Start
+### File Routing Agent
+1. Build the demo bundle:
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\Build-DemoBundle.ps1
 ```
-Output zip:
-- `artifacts/FileRoutingAgentDemoBundle-win-x64.zip`
+2. Extract `artifacts\FileRoutingAgentDemoBundle-win-x64.zip`.
+3. Double-click `Install-FileRoutingAgentDemo.cmd`.
+4. Launch the app and run `Easy Setup Wizard (Recommended)`.
 
-### Build Remote Setup Pack
+Main documentation:
+- `docs/ENGINEER_USER_GUIDE.md`
+- `docs/DEMO_SETUP_GUIDE.md`
+- `docs/DEMO_PRESENTATION_CHECKLIST.md`
+
+### Storage Audit Tool
+1. Build the audit bundle:
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\scripts\Build-RemoteSetupPack.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\Build-StorageAuditBundle.ps1
 ```
-Output zip:
-- `artifacts/RemoteSetupPack.zip`
-- Includes:
-  - `remote-scripts/01-Enable-RemoteAccess.ps1`
-  - `remote-scripts/02-Install-And-Validate-Remote.ps1`
-  - `remote-scripts/03-Collect-RemoteSupport.ps1`
-  - `remote-scripts/04-Run-RemoteSmokeTest.ps1`
-  - `remote-scripts/01-Enable-RemoteAccess.cmd`
-  - `remote-scripts/02-Install-And-Validate-Remote.cmd`
-  - `remote-scripts/03-Collect-RemoteSupport.cmd`
-  - `REMOTE_SETUP_QUICK_START.md`
+2. Extract `artifacts\StorageAuditBundle-win-x64.zip`.
+3. On the office machine, while signed into the normal user session where `P:\` is mapped, double-click `Run-StorageAudit.cmd`.
+4. Open the generated `storage-audit-report.xlsx` under:
+   `%USERPROFILE%\Documents\FileStorageAudit\Audit_<timestamp>`
 
-## ProjectWise Command Connector Profile
-The app supports a script/CLI connector profile so you can demonstrate publish metadata flow before deep ProjectWise API integration.
+Main documentation:
+- `docs/STORAGE_AUDIT_GUIDE.md`
 
-### Default Policy Profile (Included)
-Each project can set:
-- `connector.enabled`: `true` or `false`
-- `connector.provider`: `projectwise_script` (handled by command-process adapter)
-- `connector.settings.command`: executable (`powershell.exe`)
-- `connector.settings.arguments`: tokenized template:
-  - `{projectId}`
-  - `{sourcePath}`
-  - `{destinationPath}`
-  - `{action}`
-  - `{category}`
-- `connector.settings.timeoutSeconds`
-- `connector.settings.parseStdoutJson`
+## Remote Workflow
+The repo includes PowerShell remoting helpers for two-machine workflows.
 
-### Sample Script Installation
-Install the sample script to the default policy path:
+File Routing Agent remote scripts:
+- `scripts\remote\01-Enable-RemoteAccess.ps1`
+- `scripts\remote\02-Install-And-Validate-Remote.ps1`
+- `scripts\remote\03-Collect-RemoteSupport.ps1`
+- `scripts\remote\04-Run-RemoteSmokeTest.ps1`
+
+Storage Audit remote scripts:
+- `scripts\remote\05-Collect-RemoteStorageAudit.ps1`
+- `scripts\remote\06-Run-RemoteStorageAudit.ps1`
+
+Important constraint:
+- mapped drives such as `P:\` are usually only visible in the signed-in user session,
+- remote admin/WinRM sessions generally do not inherit that mapping,
+- for `P:\` scans, run the Storage Audit Tool locally on the office machine,
+- for fully remote execution, pass a UNC path with `--root`.
+
+## Developer Build
+Build everything:
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\scripts\Install-ProjectWiseConnectorSample.ps1 -Force
-```
-
-### Script Quick Validation
-```powershell
-powershell -ExecutionPolicy Bypass -File "%ProgramData%\FileRoutingAgent\Connectors\ProjectWisePublish.ps1" `
-  -ProjectId Project123 `
-  -SourcePath C:\Temp\input.pdf `
-  -DestinationPath C:\Temp\official\input.pdf `
-  -Action Copy `
-  -Category progress_print `
-  -DryRun
+dotnet build FileRoutingAgent.slnx
 ```
 
-Expected behavior:
-- Outputs JSON on stdout.
-- Writes connector log under `%ProgramData%\FileRoutingAgent\ConnectorLogs`.
-- Writes queue/submission JSON under `%ProgramData%\FileRoutingAgent\ConnectorQueue`.
+Run all tests:
+```powershell
+dotnet test FileRoutingAgent.slnx --no-build
+```
 
-## Admin UX For Demonstration Meeting
-- `Open Configuration` provides:
-  - **Easy Setup Wizard (Recommended)** for non-programmers
-  - folder-by-folder verification/editing before setup is applied
-  - guided setup window for all key settings and required project paths
-  - live JSON editor
-  - validation panel
-  - project template wizard
-  - `Save + Sign + Reload` (no app restart required)
-  - `Apply PW Cmd Profile (Unconfigured)` bulk action
-- `Diagnostics` shows:
-  - root availability
-  - scan history
-  - connector publish activity (`connector`, `status`, `success`, `externalTransactionId`, `error`)
-- `Export Support Bundle` creates a support zip you can send after a setup/test run.
+Run the tray app from source:
+```powershell
+dotnet run --project FileRoutingAgent.App
+```
+
+Run the storage audit tool from source:
+```powershell
+dotnet run --project StorageAudit.Tool -- --root P:\
+```
+
+Run the local routing smoke test:
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\LocalSmokeTest.ps1
+```
+
+## Repository Layout
+- `FileRoutingAgent.App/`: WPF tray UI, prompts, diagnostics, config editor
+- `FileRoutingAgent.Core/`: shared contracts, config models, interfaces
+- `FileRoutingAgent.Infrastructure/`: watcher/scanner pipeline, routing, transfer, persistence
+- `StorageAudit.Tool/`: standalone storage-audit/report generator
+- `FileRoutingAgent.Tests/`: unit and integration tests
+- `scripts/`: bundle builders, smoke tests, remote helpers
+- `docs/`: user-facing and operator-facing guides
+
+## ProjectWise Connector Support
+The File Routing Agent includes a script/CLI connector boundary so you can demonstrate publish metadata flow before deeper ProjectWise integration.
+
+Relevant files:
+- `scripts/ProjectWisePublish.ps1`
+- `scripts/Install-ProjectWiseConnectorSample.ps1`
 
 ## Runtime Data Locations
-- User preferences: `%LOCALAPPDATA%\FileRoutingAgent\user-preferences.json`
-- SQLite state/audit: `%LOCALAPPDATA%\FileRoutingAgent\state.db`
-- App logs: `%LOCALAPPDATA%\FileRoutingAgent\Logs\agent-*.log`
-- Support bundle export: `%USERPROFILE%\Desktop\FileRoutingAgent_Support_*.zip`
+File Routing Agent:
+- user preferences: `%LOCALAPPDATA%\FileRoutingAgent\user-preferences.json`
+- state/audit DB: `%LOCALAPPDATA%\FileRoutingAgent\state.db`
+- logs: `%LOCALAPPDATA%\FileRoutingAgent\Logs\agent-*.log`
+- support bundle export: `%USERPROFILE%\Desktop\FileRoutingAgent_Support_*.zip`
 
-## Policy Signature Refresh
-When policy JSON changes:
-```powershell
-$hash=(Get-FileHash -Path "FileRoutingAgent.App/Config/firm-policy.json" -Algorithm SHA256).Hash
-Set-Content -Path "FileRoutingAgent.App/Config/firm-policy.json.sig" -Value $hash -NoNewline
-```
-
-## Demonstration Checklist (Engineering Firm)
-For live-folder safety checklist, see: `docs/DEMO_PRESENTATION_CHECKLIST.md`
-
-1. Install sample connector script.
-2. Run local smoke test.
-3. Start tray app.
-4. Run `Easy Setup Wizard` from tray menu and apply project settings.
-5. Save a PDF to a configured working folder.
-6. Show prompt decision and routed destination.
-7. Open Diagnostics and show connector publish activity row.
-8. Show pending queue retry/dismiss flow.
-9. Show audit DB location for traceability.
-
-## Remote Setup Flow (Two Machines)
-See: `docs/REMOTE_SETUP_QUICK_START.md`
+Storage Audit Tool:
+- output folder: `%USERPROFILE%\Documents\FileStorageAudit\Audit_<timestamp>`
+- output contents: workbook, CSV files, JSON metadata, scratch SQLite DB, and `scan.log`

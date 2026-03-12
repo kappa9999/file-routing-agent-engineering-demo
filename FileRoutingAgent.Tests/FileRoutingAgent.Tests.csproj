@@ -23,6 +23,7 @@
   <ItemGroup>
     <ProjectReference Include="..\FileRoutingAgent.Core\FileRoutingAgent.Core.csproj" />
     <ProjectReference Include="..\FileRoutingAgent.Infrastructure\FileRoutingAgent.Infrastructure.csproj" />
+    <ProjectReference Include="..\StorageAudit.Tool\StorageAudit.Tool.csproj" />
   </ItemGroup>
 
 </Project>
