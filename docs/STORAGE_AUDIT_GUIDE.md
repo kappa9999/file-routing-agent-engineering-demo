@@ -12,6 +12,10 @@ This tool scans a project share such as `P:\` and creates a clean storage review
 - `run-manifest.json`
 - `scan.log`
 
+The bundle also includes a separate ProjectWise compare mode for `P:\1000_Software`:
+- `Run-ProjectWiseReconcile.cmd`
+- `docs\PROJECTWISE_RECONCILE_GUIDE.md`
+
 ## What it does not do
 - It does not delete files.
 - It does not archive files.
@@ -53,3 +57,10 @@ If the tool runs on the office machine and you want the results back on your mai
 - `Needs Engineering Check`
 
 These are review labels only. They are not delete instructions.
+
+## ProjectWise compare mode
+If you need to compare `P:\1000_Software` against a local copy of the ProjectWise Software folder, use:
+- `Run-ProjectWiseReconcile.cmd`
+
+This mode produces a separate workbook:
+- `folder-compare-report.xlsx`

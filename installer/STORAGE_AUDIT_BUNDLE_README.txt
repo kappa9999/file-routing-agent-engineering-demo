@@ -11,6 +11,11 @@ How to run on the office machine:
 3) Wait for the scan to finish.
 4) Review the output folder that opens automatically.
 
+ProjectWise compare mode:
+- Use Run-ProjectWiseReconcile.cmd to compare P:\1000_Software against a local copy of the ProjectWise Software folder.
+- Default compare folder path on the office machine:
+  C:\Users\akiswani\Documents\SoftwareFolderCompare
+
 Default output location:
 - %USERPROFILE%\Documents\FileStorageAudit\Audit_<timestamp>
 

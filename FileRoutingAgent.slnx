@@ -3,5 +3,6 @@
   <Project Path="FileRoutingAgent.Core/FileRoutingAgent.Core.csproj" />
   <Project Path="FileRoutingAgent.Infrastructure/FileRoutingAgent.Infrastructure.csproj" />
   <Project Path="StorageAudit.Tool/StorageAudit.Tool.csproj" />
+  <Project Path="FolderCompare.App/FolderCompare.App.csproj" />
   <Project Path="FileRoutingAgent.Tests/FileRoutingAgent.Tests.csproj" />
 </Solution>

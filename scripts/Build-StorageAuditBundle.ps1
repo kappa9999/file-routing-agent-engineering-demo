@@ -50,12 +50,15 @@ Copy-Item -Path $publishDir -Destination (Join-Path $bundleDir "app") -Recurse -
 $docsDir = Join-Path $bundleDir "docs"
 New-Item -Path $docsDir -ItemType Directory -Force | Out-Null
 Copy-Item -Path (Join-Path $repoRoot "docs\STORAGE_AUDIT_GUIDE.md") -Destination (Join-Path $docsDir "STORAGE_AUDIT_GUIDE.md") -Force
+Copy-Item -Path (Join-Path $repoRoot "docs\PROJECTWISE_RECONCILE_GUIDE.md") -Destination (Join-Path $docsDir "PROJECTWISE_RECONCILE_GUIDE.md") -Force
 Copy-Item -Path (Join-Path $repoRoot "docs\REMOTE_SETUP_QUICK_START.md") -Destination (Join-Path $docsDir "REMOTE_SETUP_QUICK_START.md") -Force
 
 $localScriptsDir = Join-Path $bundleDir "local-scripts"
 New-Item -Path $localScriptsDir -ItemType Directory -Force | Out-Null
 Copy-Item -Path (Join-Path $repoRoot "scripts\storage-audit\Run-StorageAudit.ps1") -Destination (Join-Path $localScriptsDir "Run-StorageAudit.ps1") -Force
 Copy-Item -Path (Join-Path $repoRoot "scripts\storage-audit\Run-StorageAudit.cmd") -Destination (Join-Path $bundleDir "Run-StorageAudit.cmd") -Force
+Copy-Item -Path (Join-Path $repoRoot "scripts\storage-audit\Run-ProjectWiseReconcile.ps1") -Destination (Join-Path $localScriptsDir "Run-ProjectWiseReconcile.ps1") -Force
+Copy-Item -Path (Join-Path $repoRoot "scripts\storage-audit\Run-ProjectWiseReconcile.cmd") -Destination (Join-Path $bundleDir "Run-ProjectWiseReconcile.cmd") -Force
 
 if (Test-Path -LiteralPath (Join-Path $repoRoot "scripts\remote")) {
     $remoteScriptsDir = Join-Path $bundleDir "remote-scripts"

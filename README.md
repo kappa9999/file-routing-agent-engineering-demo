@@ -2,7 +2,7 @@
 
 Windows tools for structural and civil engineering teams working on shared SMB project folders, Bentley CAD workflows, and live project-review environments.
 
-This repository currently ships two separate utilities:
+This repository currently ships three separate utilities:
 
 ## Included Tools
 ### 1. File Routing Agent
@@ -21,9 +21,20 @@ A separate, read-only utility for scanning `P:\` or a UNC share and generating E
 Key capabilities:
 - ranks the largest files by size,
 - highlights older large-file review candidates,
+- compares `P:\1000_Software` against a local copy of the ProjectWise Software folder,
 - summarizes storage by project bucket and file extension,
 - writes all output locally on the workstation,
 - never deletes, archives, or modifies the scanned share.
+
+### 3. Folder Compare Tool
+A standalone Windows desktop app for comparing any two folders and creating a clear review package.
+
+Key capabilities:
+- lets non-technical users browse and select the two folders to compare,
+- remembers the last used folder paths and cutoff date,
+- compares files using name, exact size, and modified date tolerance,
+- highlights missing files, changed files, cleanup-review candidates, and ambiguous matches,
+- writes all output locally and never modifies either compared folder.
 
 ## Quick Start
 ### File Routing Agent
@@ -52,16 +63,31 @@ powershell -ExecutionPolicy Bypass -File .\scripts\Build-StorageAuditBundle.ps1
 
 Main documentation:
 - `docs/STORAGE_AUDIT_GUIDE.md`
+- `docs/PROJECTWISE_RECONCILE_GUIDE.md`
+
+### Folder Compare Tool
+1. Build the compare bundle:
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\Build-FolderCompareBundle.ps1
+```
+2. Extract `artifacts\FolderCompareTool-win-x64.zip`.
+3. Double-click `Launch-FolderCompareTool.cmd`.
+4. Select the Primary Folder, Reference Folder, and cutoff date, then click `Run Compare`.
+
+Main documentation:
+- `docs/FOLDER_COMPARE_TOOL_GUIDE.md`
 
 ## Releases
-GitHub releases should be published as two separate assets, even when they come from the same commit:
+GitHub releases should be published as separate assets, even when they come from the same commit:
 
 - `FileRoutingAgentDemo-win-x64.zip`
 - `StorageAuditTool-win-x64.zip`
+- `FolderCompareTool-win-x64.zip`
 
 Release notes live in:
 - `docs/releases/FILE_ROUTING_AGENT_DEMO_v0.4.0.md`
 - `docs/releases/STORAGE_AUDIT_TOOL_v0.1.0.md`
+- `docs/releases/FOLDER_COMPARE_TOOL_v0.1.0.md`
 
 ## Remote Workflow
 The repo includes PowerShell remoting helpers for two-machine workflows.
@@ -113,6 +139,7 @@ powershell -ExecutionPolicy Bypass -File .\scripts\LocalSmokeTest.ps1
 - `FileRoutingAgent.Core/`: shared contracts, config models, interfaces
 - `FileRoutingAgent.Infrastructure/`: watcher/scanner pipeline, routing, transfer, persistence
 - `StorageAudit.Tool/`: standalone storage-audit/report generator
+- `FolderCompare.App/`: standalone WPF folder-compare desktop UI
 - `FileRoutingAgent.Tests/`: unit and integration tests
 - `scripts/`: bundle builders, smoke tests, remote helpers
 - `docs/`: user-facing and operator-facing guides

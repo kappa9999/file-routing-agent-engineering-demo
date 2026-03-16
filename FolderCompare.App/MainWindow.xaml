@@ -1,0 +1,135 @@
+<Window x:Class="FolderCompare.App.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Folder Compare Tool"
+        Width="980"
+        Height="760"
+        MinWidth="860"
+        MinHeight="680"
+        WindowStartupLocation="CenterScreen"
+        Background="#EEF3F8">
+    <Grid Margin="24">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <StackPanel Grid.Row="0" Margin="0,0,0,18">
+            <TextBlock FontSize="28" FontWeight="Bold" Foreground="#17324D" Text="Folder Compare Tool" />
+            <TextBlock Margin="0,8,0,0"
+                       FontSize="14"
+                       Foreground="#425466"
+                       TextWrapping="Wrap"
+                       Text="Compare any two folders using file name, exact size, and modified date tolerance. This tool is read-only and creates an Excel review package for missing files, changed files, cleanup candidates, and ambiguous matches." />
+        </StackPanel>
+
+        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+            <StackPanel>
+                <Border Margin="0,0,0,16" Padding="20" Background="White" BorderBrush="#D6DEE8" BorderThickness="1" CornerRadius="14">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="190" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="120" />
+                        </Grid.ColumnDefinitions>
+
+                        <TextBlock Grid.Row="0" Grid.ColumnSpan="3" FontSize="18" FontWeight="SemiBold" Foreground="#17324D" Text="Compare Setup" />
+
+                        <TextBlock Grid.Row="1" Grid.Column="0" Margin="0,18,16,0" VerticalAlignment="Center" FontWeight="SemiBold" Text="Primary Folder" />
+                        <TextBox x:Name="PrimaryFolderTextBox" Grid.Row="1" Grid.Column="1" Margin="0,16,12,0" Padding="10,8" MinHeight="38" />
+                        <Button Grid.Row="1" Grid.Column="2" Margin="0,16,0,0" Padding="14,8" Content="Browse..." Click="BrowsePrimaryFolderButton_OnClick" />
+
+                        <TextBlock Grid.Row="2" Grid.Column="0" Margin="0,16,16,0" VerticalAlignment="Center" FontWeight="SemiBold" Text="Reference Folder" />
+                        <TextBox x:Name="ReferenceFolderTextBox" Grid.Row="2" Grid.Column="1" Margin="0,14,12,0" Padding="10,8" MinHeight="38" />
+                        <Button Grid.Row="2" Grid.Column="2" Margin="0,14,0,0" Padding="14,8" Content="Browse..." Click="BrowseReferenceFolderButton_OnClick" />
+
+                        <TextBlock Grid.Row="3" Grid.Column="0" Margin="0,16,16,0" VerticalAlignment="Center" FontWeight="SemiBold" Text="Cutoff Date" />
+                        <DatePicker x:Name="CutoffDatePicker" Grid.Row="3" Grid.Column="1" Margin="0,14,12,0" SelectedDateFormat="Short" Padding="8,6" />
+                        <Button Grid.Row="3" Grid.Column="2" Margin="0,14,0,0" Padding="14,8" Content="Use Defaults" Click="UseRecommendedDefaultsButton_OnClick" />
+
+                        <TextBlock Grid.Row="4" Grid.Column="0" Margin="0,16,16,0" VerticalAlignment="Center" FontWeight="SemiBold" Text="Output Folder" />
+                        <TextBox x:Name="OutputFolderTextBox" Grid.Row="4" Grid.Column="1" Margin="0,14,12,0" Padding="10,8" MinHeight="38" />
+                        <StackPanel Grid.Row="4" Grid.Column="2" Margin="0,14,0,0">
+                            <Button Margin="0,0,0,8" Padding="14,8" Content="Browse..." Click="BrowseOutputFolderButton_OnClick" />
+                            <Button Padding="14,8" Content="Use Default" Click="ClearOutputFolderButton_OnClick" />
+                        </StackPanel>
+
+                        <TextBlock Grid.Row="5"
+                                   Grid.Column="1"
+                                   Margin="0,12,0,0"
+                                   Foreground="#5A6878"
+                                   TextWrapping="Wrap"
+                                   Text="Leave Output Folder blank to use Documents\FileStorageAudit\PwReconcile_&lt;timestamp&gt;. Output is blocked inside either compared folder." />
+                    </Grid>
+                </Border>
+
+                <Border Margin="0,0,0,16" Padding="20" Background="White" BorderBrush="#D6DEE8" BorderThickness="1" CornerRadius="14">
+                    <StackPanel>
+                        <TextBlock FontSize="18" FontWeight="SemiBold" Foreground="#17324D" Text="Run Options" />
+                        <CheckBox x:Name="OpenOutputOnSuccessCheckBox"
+                                  Margin="0,14,0,0"
+                                  Content="Open the output folder automatically when the compare finishes" />
+                        <TextBlock Margin="0,10,0,0"
+                                   Foreground="#5A6878"
+                                   TextWrapping="Wrap"
+                                   Text="The report classifies files as missing from the reference folder, changed after the cutoff date, cleanup review candidates, or ambiguous matches. No files are modified." />
+                    </StackPanel>
+                </Border>
+
+                <Border Padding="20" Background="White" BorderBrush="#D6DEE8" BorderThickness="1" CornerRadius="14">
+                    <StackPanel>
+                        <DockPanel>
+                            <TextBlock DockPanel.Dock="Left" FontSize="18" FontWeight="SemiBold" Foreground="#17324D" Text="Status" />
+                            <ProgressBar x:Name="RunProgressBar"
+                                         DockPanel.Dock="Right"
+                                         Width="220"
+                                         Height="16"
+                                         Margin="12,2,0,0"
+                                         IsIndeterminate="True"
+                                         Visibility="Collapsed" />
+                        </DockPanel>
+                        <TextBlock x:Name="LatestOutputTextBlock"
+                                   Margin="0,12,0,10"
+                                   Foreground="#425466"
+                                   TextWrapping="Wrap"
+                                   Text="Latest output: not run yet" />
+                        <TextBox x:Name="StatusTextBox"
+                                 Height="220"
+                                 Padding="10"
+                                 FontFamily="Consolas"
+                                 IsReadOnly="True"
+                                 VerticalScrollBarVisibility="Auto"
+                                 TextWrapping="Wrap"
+                                 AcceptsReturn="True" />
+                    </StackPanel>
+                </Border>
+            </StackPanel>
+        </ScrollViewer>
+
+        <DockPanel Grid.Row="2" Margin="0,18,0,0" LastChildFill="False">
+            <StackPanel DockPanel.Dock="Left" Orientation="Horizontal">
+                <Button x:Name="OpenOutputButton" Width="150" Margin="0,0,12,0" Padding="14,10" Content="Open Output Folder" Click="OpenOutputButton_OnClick" IsEnabled="False" />
+                <Button x:Name="OpenWorkbookButton" Width="150" Padding="14,10" Content="Open Workbook" Click="OpenWorkbookButton_OnClick" IsEnabled="False" />
+            </StackPanel>
+            <Button x:Name="RunCompareButton"
+                    DockPanel.Dock="Right"
+                    Width="170"
+                    Padding="18,10"
+                    Background="#1C6DD0"
+                    Foreground="White"
+                    BorderBrush="#1C6DD0"
+                    FontWeight="SemiBold"
+                    Content="Run Compare"
+                    Click="RunCompareButton_OnClick" />
+        </DockPanel>
+    </Grid>
+</Window>
